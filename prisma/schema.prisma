@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // url is now configured in prisma.config.ts (Prisma 7 breaking change)
+  // See: https://pris.ly/d/config-datasource
+}
+
+enum Role {
+  aspirant
+  mentor
+  admin
+}
+
+enum ApplicationStatus {
+  pending
+  approved
+  rejected
+}
+
+enum BookingStatus {
+  payment_pending
+  payment_complete
+  scheduled
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  successful
+  failed
+  refunded
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String?
+  email         String   @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role     @default(aspirant)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // NextAuth required relations
+  accounts      Account[]
+  sessions      Session[]
+
+  // App relations
+  mentor        Mentor?
+  applications  MentorApplication[]
+  bookings      Booking[]           @relation("StudentBookings")
+
+  @@map("users")
+}
+
+// NextAuth required models
+model Account {
+  id                String  @id @default(uuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model MentorApplication {
+  id           String            @id @default(uuid())
+  userId       String            @map("user_id")
+  iit          String
+  branch       String
+  year         Int
+  languages    String[]
+  bio          String
+  calendlyLink String            @map("calendly_link")
+  collegeIdUrl String            @map("college_id_url")
+  status       ApplicationStatus @default(pending)
+  reviewedAt   DateTime?         @map("reviewed_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("mentor_applications")
+}
+
+model Mentor {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  iit          String
+  branch       String
+  year         Int
+  languages    String[]
+  bio          String
+  calendlyLink String   @map("calendly_link")
+  profileImage String?  @map("profile_image_url")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id])
+  bookings Booking[]
+
+  @@index([iit])
+  @@index([branch])
+  @@index([year])
+  @@map("mentors")
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  mentorId        String        @map("mentor_id")
+  studentId       String        @map("student_id")
+  sessionToken    String        @unique @map("session_token") @default(uuid())
+  calendlyEventId String?       @map("calendly_event_id")
+  meetingLink     String?       @map("meeting_link")
+  startTime       DateTime?     @map("start_time")
+  endTime         DateTime?     @map("end_time")
+  status          BookingStatus @default(payment_pending)
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  mentor  Mentor   @relation(fields: [mentorId], references: [id])
+  student User     @relation("StudentBookings", fields: [studentId], references: [id])
+  payment Payment?
+
+  // Composite index for cron queries
+  @@index([status, createdAt])
+  // Unique active booking enforced at DB level via partial unique index (in migration):
+  // CREATE UNIQUE INDEX unique_active_booking ON bookings(student_id, mentor_id)
+  // WHERE status NOT IN ('cancelled','completed');
+  @@map("bookings")
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  bookingId        String        @unique @map("booking_id")
+  razorpayOrderId  String        @unique @map("razorpay_order_id")
+  razorpayPaymentId String?      @map("razorpay_payment_id")
+  amount           Int           // always 15000 paise = ₹150
+  currency         String        @default("INR")
+  status           PaymentStatus @default(pending)
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("payments")
+}
+
+model WebhookEvent {
+  id         String   @id @default(uuid())
+  source     String   // 'razorpay' | 'calendly'
+  eventId    String   @unique @map("event_id")
+  payload    Json
+  processed  Boolean  @default(false)
+  error      String?
+  receivedAt DateTime @default(now()) @map("received_at")
+
+  @@map("webhook_events")
+}

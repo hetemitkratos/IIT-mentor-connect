@@ -1,0 +1,26 @@
+import { NextRequest } from 'next/server'
+import { requireAuth } from '@/lib/session'
+import { createRazorpayOrder } from '@/services/payment.service'
+import { createOrderSchema } from '@/lib/validators/payment.validator'
+import { success, error } from '@/lib/api-response'
+
+export async function POST(req: NextRequest) {
+  const { user, response } = await requireAuth()
+  if (response) return response
+
+  const body = await req.json()
+  const parsed = createOrderSchema.safeParse(body)
+  if (!parsed.success) return error(parsed.error.issues[0].message, 400)
+
+  try {
+    const order = await createRazorpayOrder(parsed.data.bookingId, user!.id)
+    return success(order)
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      if (err.message === 'NOT_FOUND') return error('Booking not found', 404)
+      if (err.message === 'INVALID_BOOKING_STATUS') return error('Booking is not in a payable state', 409)
+    }
+    return error('Failed to create payment order', 500)
+  }
+}
+
