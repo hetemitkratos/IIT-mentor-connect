@@ -6,12 +6,25 @@ import {
 import { success, error } from '@/lib/api-response'
 
 export async function POST(req: NextRequest) {
-  const body             = await req.text()
-  const signatureHeader  = req.headers.get('calendly-webhook-signature') ?? ''
+  const body            = await req.text()
+  const signatureHeader = req.headers.get('calendly-webhook-signature') ?? ''
 
-  // Verify Calendly HMAC signature before processing anything
-  if (!verifyCalendlySignature(body, signatureHeader)) {
-    return error('Invalid signature', 400)
+  // IMPORTANT: Re-enable strict signature verification in production.
+  // Skip verification only when CALENDLY_WEBHOOK_SECRET is not configured
+  // (i.e. absent OR still set to the placeholder value in .env).
+  const rawSecret = process.env.CALENDLY_WEBHOOK_SECRET
+  const hasRealSecret =
+    !!rawSecret &&
+    rawSecret !== 'YOUR_CALENDLY_WEBHOOK_SECRET' &&
+    rawSecret.length > 10
+
+  if (hasRealSecret) {
+    if (!verifyCalendlySignature(body, signatureHeader)) {
+      console.error('[CALENDLY_WEBHOOK] Signature verification failed')
+      return error('Invalid signature', 400)
+    }
+  } else {
+    console.warn('[CALENDLY_WEBHOOK] ⚠️  Signature verification SKIPPED — set CALENDLY_WEBHOOK_SECRET in .env for production')
   }
 
   let payload: Record<string, unknown>

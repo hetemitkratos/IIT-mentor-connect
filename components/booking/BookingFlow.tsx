@@ -3,19 +3,28 @@
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+/**
+ * PAYMENT_ENABLED = false → stops after booking creation, shows confirmation.
+ * Flip to true when Razorpay credentials are configured.
+ */
+const PAYMENT_ENABLED = false
+
 interface BookingFlowProps {
-  mentorId:   string
-  mentorName: string
+  mentorId:     string
+  mentorName:   string
+  calendlyLink: string   // mentor's Calendly scheduling URL
 }
 
 type FlowStep =
   | 'idle'
   | 'creating_booking'
+  | 'booked'            // payment bypass success state
   | 'creating_order'
   | 'razorpay_open'
   | 'verifying'
   | 'redirecting'
   | 'error'
+
 
 interface FlowError {
   message: string
@@ -64,7 +73,7 @@ function loadRazorpaySDK(): Promise<void> {
   })
 }
 
-export function BookingFlow({ mentorId, mentorName }: BookingFlowProps) {
+export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowProps) {
   const router = useRouter()
 
   const [step, setStep]               = useState<FlowStep>('idle')
@@ -72,8 +81,10 @@ export function BookingFlow({ mentorId, mentorName }: BookingFlowProps) {
   const [calendlyUrl, setCalendlyUrl] = useState<string>('')
   // Fix #6: Retain bookingId across retries — avoids creating duplicate bookings on payment cancel
   const [savedBookingId, setSavedBookingId] = useState<string | null>(null)
+  // sessionToken returned from /api/bookings/create — used as utm_source for Calendly webhook linking
+  const [sessionToken, setSessionToken]     = useState<string | null>(null)
 
-  const isProcessing = step !== 'idle' && step !== 'error'
+  const isProcessing = step === 'creating_booking' || step === 'creating_order' || step === 'razorpay_open' || step === 'verifying' || step === 'redirecting'
 
   const handleError = useCallback((message: string, code?: string) => {
     setStep('error')
@@ -103,9 +114,35 @@ export function BookingFlow({ mentorId, mentorName }: BookingFlowProps) {
           handleError(bookingJson.error ?? 'Failed to create booking')
           return
         }
-        bookingId = bookingJson.data.bookingId as string
+        bookingId    = bookingJson.data.bookingId    as string
+        const token  = bookingJson.data.sessionToken as string
         setSavedBookingId(bookingId)
+        setSessionToken(token)
       }
+
+      // ── PAYMENT BYPASS ───────────────────────────────────────────────────
+      // Remove this block (or flip PAYMENT_ENABLED to true) when Razorpay
+      // credentials are configured in .env.local.
+      if (!PAYMENT_ENABLED) {
+        setStep('booked')
+
+        // sessionToken is in React state — set by setSessionToken() when the booking was first created.
+        // On retry paths, the if(!bookingId) block is skipped but sessionToken state is already populated.
+        console.log('[BOOKING_REDIRECT] calendlyLink:', calendlyLink)
+        console.log('[BOOKING_REDIRECT] sessionToken:', sessionToken)
+
+        setTimeout(() => {
+          if (!calendlyLink) {
+            console.warn('[BOOKING_REDIRECT] No calendlyLink — falling back to /dashboard')
+            router.push('/dashboard')
+            return
+          }
+          // Append utm_source so the Calendly webhook can link back to this booking
+          window.location.href = `${calendlyLink}?utm_source=${sessionToken ?? ''}`
+        }, 1500)
+        return
+      }
+      // ────────────────────────────────────────────────────────────────────
 
       // ── Step 2: Create Razorpay order ────────────────────────────────────
       setStep('creating_order')
@@ -181,18 +218,29 @@ export function BookingFlow({ mentorId, mentorName }: BookingFlowProps) {
 
   // ── Step label ─────────────────────────────────────────────────────────────
   const stepLabel: Record<FlowStep, string> = {
-    idle:            'Book a Session — ₹150',
+    idle:             'Book a Session — ₹150',
     creating_booking: 'Creating booking…',
-    creating_order:  'Preparing payment…',
-    razorpay_open:   'Complete payment in Razorpay…',
-    verifying:       'Verifying payment…',
-    redirecting:     'Redirecting to Calendly…',
-    error:           'Book a Session — ₹150',
+    booked:           'Booking confirmed! ✅',
+    creating_order:   'Preparing payment…',
+    razorpay_open:    'Complete payment in Razorpay…',
+    verifying:        'Verifying payment…',
+    redirecting:      'Redirecting to Calendly…',
+    error:            'Book a Session — ₹150',
   }
 
   return (
     <div className="booking-flow">
-      {/* Error banner */}
+
+      {/* ── Bypass success state ─────────────────────────────────────────── */}
+      {step === 'booked' && (
+        <div className="booking-flow__success" role="status">
+          <p className="booking-flow__success-msg">
+            ✅ Booking confirmed! Redirecting to your dashboard…
+          </p>
+        </div>
+      )}
+
+      {/* ── Error banner ─────────────────────────────────────────────────── */}
       {step === 'error' && flowError && (
         <div className="booking-flow__error" role="alert">
           <p>{flowError.message}</p>
@@ -206,29 +254,31 @@ export function BookingFlow({ mentorId, mentorName }: BookingFlowProps) {
         </div>
       )}
 
-      {/* Book button */}
-      <button
-        type="button"
-        onClick={startBookingFlow}
-        disabled={isProcessing}
-        className="booking-flow__btn"
-        aria-busy={isProcessing}
-        aria-label={isProcessing ? stepLabel[step] : 'Book a session for ₹150'}
-      >
-        {isProcessing && (
-          <span className="booking-flow__spinner" aria-hidden="true" />
-        )}
-        {stepLabel[step]}
-      </button>
+      {/* ── Book / processing button (hidden on success) ──────────────────── */}
+      {step !== 'booked' && (
+        <button
+          type="button"
+          onClick={startBookingFlow}
+          disabled={isProcessing}
+          className="booking-flow__btn"
+          aria-busy={isProcessing}
+          aria-label={isProcessing ? stepLabel[step] : 'Book a session for ₹150'}
+        >
+          {isProcessing && (
+            <span className="booking-flow__spinner" aria-hidden="true" />
+          )}
+          {stepLabel[step]}
+        </button>
+      )}
 
-      {/* Progress hint */}
-      {isProcessing && step !== 'redirecting' && (
+      {/* ── Progress hint ────────────────────────────────────────────────── */}
+      {isProcessing && (
         <p className="booking-flow__hint">
           Do not close this tab while processing.
         </p>
       )}
 
-      {/* Redirecting state */}
+      {/* ── Calendly redirect state ───────────────────────────────────────── */}
       {step === 'redirecting' && (
         <p className="booking-flow__hint">
           ✅ Payment confirmed! Redirecting to Calendly to pick your time slot…

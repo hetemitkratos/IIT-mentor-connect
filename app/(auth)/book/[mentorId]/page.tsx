@@ -1,6 +1,3 @@
-'use client'
-
-import { use } from 'react'
 import { notFound } from 'next/navigation'
 import { BookingFlow } from '@/components/booking/BookingFlow'
 import { getMentorById } from '@/services/mentor.service'
@@ -9,17 +6,11 @@ interface BookPageProps {
   params: Promise<{ mentorId: string }>
 }
 
-// NOTE: This page is inside (auth) route group — layout.tsx already guarantees session.
-export default function BookPage({ params }: BookPageProps) {
-  const { mentorId } = use(params)
+// Server Component — no 'use client' needed.
+// The (auth) layout.tsx already guarantees a valid session before this renders.
+export default async function BookPage({ params }: BookPageProps) {
+  const { mentorId } = await params
 
-  // Fetch is done client-side via the hook below for simplicity.
-  // The BookingFlow handles all state; mentor info is passed as props.
-  return <BookPageInner mentorId={mentorId} />
-}
-
-// Inner async server component that fetches mentor data
-async function BookPageInner({ mentorId }: { mentorId: string }) {
   const mentor = await getMentorById(mentorId)
   if (!mentor) notFound()
 
@@ -65,8 +56,12 @@ async function BookPageInner({ mentorId }: { mentorId: string }) {
           <li>Get a Google Meet link via email</li>
         </ol>
 
-        {/* Booking flow */}
-        <BookingFlow mentorId={mentorId} mentorName={displayName} />
+        {/* Booking flow — client component */}
+        <BookingFlow
+          mentorId={mentorId}
+          mentorName={displayName}
+          calendlyLink={mentor.calendlyLink}
+        />
 
         <p className="book-page__disclaimer">
           Cancellations must be requested at least 4 hours before the session.

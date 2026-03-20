@@ -73,3 +73,40 @@ export async function updateMentorProfile(
     data,
   })
 }
+
+export interface CreateMentorInput {
+  userId:       string
+  iit:          string
+  branch:       string
+  year:         number
+  languages:    string[]
+  bio:          string
+  calendlyLink: string
+  profileImage?: string
+}
+
+/**
+ * Creates a mentor using the Prisma client.
+ * @default(uuid()) is a Prisma CLIENT-level default — it only fires when you
+ * use prisma.mentor.create(). Prisma Studio bypasses the client and writes
+ * directly to the DB, so it never sees this default. Always use this function.
+ */
+export async function createMentor(input: CreateMentorInput) {
+  const existing = await prisma.mentor.findUnique({ where: { userId: input.userId } })
+  if (existing) throw new Error('MENTOR_ALREADY_EXISTS')
+
+  return prisma.mentor.create({
+    data: {
+      userId:       input.userId,
+      iit:          input.iit,
+      branch:       input.branch,
+      year:         input.year,
+      languages:    input.languages,
+      bio:          input.bio,
+      calendlyLink: input.calendlyLink,
+      profileImage: input.profileImage,
+    },
+    include: { user: { select: { name: true, image: true } } },
+  })
+}
+

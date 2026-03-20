@@ -26,9 +26,9 @@ export function MentorCard({ mentor }: MentorCardProps) {
 
   return (
     <Link
-      href={`/mentors/${mentor.id}`}
+      href={`/book/${mentor.id}`}
       className="mentor-card"
-      aria-label={`View profile of ${displayName}`}
+      aria-label={`Book a session with ${displayName}`}
     >
       {/* Avatar */}
       <div className="mentor-card__avatar-wrap">
@@ -70,7 +70,7 @@ export function MentorCard({ mentor }: MentorCardProps) {
 
         <p className="mentor-card__bio">{bioExcerpt}</p>
 
-        <span className="mentor-card__cta">View Profile →</span>
+        <span className="mentor-card__cta">Book Session →</span>
       </div>
     </Link>
   )
