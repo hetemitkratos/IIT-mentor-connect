@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import LogoutButton from '@/components/auth/LogoutButton'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -42,6 +43,11 @@ export default async function StudentDashboardPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) redirect('/')
 
+  // Role-based redirect — mentors and admins go to their own dashboards
+  const role = session.user.role
+  if (role === 'mentor') redirect('/mentor/dashboard')
+  if (role === 'admin') redirect('/admin')
+
   const bookings = await prisma.booking.findMany({
     where:   { studentId: session.user.id },
     include: {
@@ -73,11 +79,14 @@ export default async function StudentDashboardPage() {
     <main className="dashboard-page">
 
       {/* Header */}
-      <div className="dashboard-page__header">
-        <h1 className="dashboard-page__title">My Dashboard</h1>
-        <p className="dashboard-page__subtitle">
-          Welcome back, {session.user.name ?? 'Student'} 👋
-        </p>
+      <div className="dashboard-page__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 className="dashboard-page__title">My Dashboard</h1>
+          <p className="dashboard-page__subtitle">
+            Welcome back, {session.user.name ?? 'Student'} 👋
+          </p>
+        </div>
+        <LogoutButton />
       </div>
 
       {/* Stats row */}

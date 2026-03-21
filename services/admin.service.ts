@@ -14,11 +14,14 @@ export async function getApplications(status = 'pending', page = 1, limit = 20) 
     }),
   ])
 
-  // Generate signed URLs for college IDs
+  // Generate signed URLs for college IDs stored in Supabase
+  // Plain URLs (http/https) are passed through as-is
   const applicationsWithUrls = await Promise.all(
     applications.map(async (app) => ({
       ...app,
-      collegeIdUrl: await getCollegeIdSignedUrl(app.collegeIdUrl),
+      collegeIdUrl: app.collegeIdUrl?.startsWith('http')
+        ? app.collegeIdUrl
+        : await getCollegeIdSignedUrl(app.collegeIdUrl),
     }))
   )
 
