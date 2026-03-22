@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       parsed.data.razorpayPaymentId,
       parsed.data.razorpaySignature
     )
-    return success({ message: 'Payment verified. Please schedule your session.' })
+    return success({ message: 'Payment verified. Your session is confirmed!' })
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'INVALID_SIGNATURE')
       return error('Payment signature verification failed', 400)

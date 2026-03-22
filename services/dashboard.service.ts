@@ -2,7 +2,9 @@ import { prisma } from '@/lib/prisma'
 import { SESSION_PRICE_RS } from '@/constants/pricing'
 
 // Statuses that represent an active/upcoming session
-const UPCOMING_STATUSES = ['scheduled', 'payment_complete'] as const
+// Student sees: scheduled (confirmed) + awaiting_payment (Calendly done, needs payment) + payment_pending (just created)
+// Mentor sees: only scheduled (via getMentorDashboard overriding this default)
+const UPCOMING_STATUSES = ['scheduled', 'awaiting_payment', 'payment_pending'] as const
 // Statuses that represent a concluded session
 const PAST_STATUSES = ['completed', 'cancelled'] as const
 
@@ -58,8 +60,8 @@ export async function getMentorDashboard(mentorId: string) {
     prisma.booking.findMany({
       where: {
         mentorId,
-        // Fix: include 'payment_complete' — student paid, slot not yet picked
-        status: { in: [...UPCOMING_STATUSES] },
+        // Mentor only sees paid, confirmed sessions
+        status: { in: ['scheduled'] as const },
       },
       include: { student: { select: { name: true, image: true } } },
       orderBy: { startTime: 'asc' },   // nearest session first

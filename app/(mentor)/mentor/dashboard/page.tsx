@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { getMentorDashboard } from '@/services/dashboard.service'
 import LogoutButton from '@/components/auth/LogoutButton'
+import VerifySessionOTP from '@/components/booking/VerifySessionOTP'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -116,6 +117,11 @@ export default async function MentorDashboardPage() {
                         No link yet
                       </span>
                     )}
+                    <VerifySessionOTP
+                      bookingId={b.id}
+                      otpVerified={b.otpVerified}
+                      status={b.status}
+                    />
                   </div>
                 </div>
               ))}

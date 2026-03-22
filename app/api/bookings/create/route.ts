@@ -13,11 +13,13 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return error(parsed.error.issues[0].message, 400)
 
   try {
+    console.log('[BOOKING_INPUT]', { studentId: user!.id, mentorId: parsed.data.mentorId })
     const booking = await createBooking(user!.id, parsed.data.mentorId)
     return success({ bookingId: booking.id, sessionToken: booking.sessionToken, paymentRequired: true }, 201)
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'DUPLICATE_BOOKING')
       return error('You already have an active booking with this mentor', 409)
+    console.error('[BOOKING_CREATE_ERROR]', err)
     return error('Failed to create booking', 500)
   }
 }

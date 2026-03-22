@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import LogoutButton from '@/components/auth/LogoutButton'
+import StartSessionOTP from '@/components/booking/StartSessionOTP'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 // ── Status badge colours ─────────────────────────────────────────────────────
 const STATUS_STYLES: Record<string, string> = {
   payment_pending:  'status--pending',
+  awaiting_payment: 'status--processing',
   payment_complete: 'status--processing',
   scheduled:        'status--scheduled',
   completed:        'status--completed',
@@ -20,7 +22,8 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  payment_pending:  'Awaiting Payment',
+  payment_pending:  'Booking Created',
+  awaiting_payment: 'Complete Payment',
   payment_complete: 'Payment Received',
   scheduled:        'Scheduled',
   completed:        'Completed',
@@ -36,6 +39,13 @@ function formatDate(date: Date | null): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function getGoogleCalendarUrl(startTime: Date, endTime: Date | null, meetingLink: string | null): string {
+  const format = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, '')
+  const startStr = format(startTime)
+  const endStr = endTime ? format(endTime) : format(new Date(startTime.getTime() + 20 * 60 * 1000))
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Mentorship Session')}&dates=${startStr}/${endStr}&details=${encodeURIComponent('Session with mentor')}&location=${encodeURIComponent(meetingLink ?? '')}`
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -140,17 +150,39 @@ export default async function StudentDashboardPage() {
                         📅 Session: {formatDate(b.startTime)}
                       </p>
                     )}
-                    {b.meetingLink && (
+                    {['scheduled', 'awaiting_payment'].includes(b.status) && !b.meetingLink && (
+                      <span className="text-sm text-gray-500 italic block mt-2">
+                        ⏳ Syncing meeting link...
+                      </span>
+                    )}
+                    {['scheduled', 'awaiting_payment'].includes(b.status) && b.startTime ? (
                       <a
-                        href={b.meetingLink}
+                        href={getGoogleCalendarUrl(b.startTime, b.endTime, b.meetingLink)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="booking-card__join-link"
+                        style={{ marginLeft: '12px', background: '#f3f4f6', color: '#374151' }}
                       >
-                        Join Google Meet →
+                        📅 Add to Calendar
                       </a>
+                    ) : ['scheduled', 'awaiting_payment'].includes(b.status) && !b.startTime && (
+                      <span
+                        className="booking-card__join-link"
+                        style={{ marginLeft: '12px', background: '#f3f4f6', color: '#9ca3af', textDecoration: 'none', cursor: 'default' }}
+                      >
+                        📅 Syncing calendar...
+                      </span>
                     )}
                   </div>
+                  <StartSessionOTP
+                    bookingId={b.id}
+                    startTime={b.startTime}
+                    status={b.status}
+                    initialOtp={b.otp}
+                    otpVerified={b.otpVerified}
+                    otpGeneratedAt={b.otpGeneratedAt}
+                    meetingLink={b.meetingLink}
+                  />
                 </div>
                 <span className={`booking-card__status ${STATUS_STYLES[b.status] ?? ''}`}>
                   {STATUS_LABELS[b.status] ?? b.status}

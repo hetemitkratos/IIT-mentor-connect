@@ -10,7 +10,8 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
   })
 
   if (!booking || booking.studentId !== studentId) throw new Error('NOT_FOUND')
-  if (booking.status !== 'payment_pending') throw new Error('INVALID_BOOKING_STATUS')
+  // Schedule First → Pay Later: payment order created after Calendly scheduling
+  if (booking.status !== 'awaiting_payment') throw new Error('INVALID_BOOKING_STATUS')
 
   // Fix #4: Idempotency — return existing order if already created for this booking
   const existingPayment = await prisma.payment.findUnique({ where: { bookingId } })
@@ -79,7 +80,7 @@ export async function verifyPayment(
     })
     await tx.booking.update({
       where: { id: payment.bookingId },
-      data:  { status: 'payment_complete' },
+      data:  { status: 'scheduled' },   // Schedule First → Pay Later: payment = final step
     })
   })
 

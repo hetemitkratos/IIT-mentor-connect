@@ -13,6 +13,8 @@ interface BookingFlowProps {
   mentorId:     string
   mentorName:   string
   calendlyLink: string   // mentor's Calendly scheduling URL
+  studentName?: string | null
+  studentEmail?: string | null
 }
 
 type FlowStep =
@@ -73,7 +75,7 @@ function loadRazorpaySDK(): Promise<void> {
   })
 }
 
-export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowProps) {
+export function BookingFlow({ mentorId, mentorName, calendlyLink, studentName, studentEmail }: BookingFlowProps) {
   const router = useRouter()
 
   const [step, setStep]               = useState<FlowStep>('idle')
@@ -100,6 +102,7 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowP
 
     try {
       let bookingId = savedBookingId
+      let currentToken = sessionToken
 
       // ── Step 1: Create booking (skipped on retry if bookingId already exists) ─
       if (!bookingId) {
@@ -115,9 +118,9 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowP
           return
         }
         bookingId    = bookingJson.data.bookingId    as string
-        const token  = bookingJson.data.sessionToken as string
+        currentToken = bookingJson.data.sessionToken as string
         setSavedBookingId(bookingId)
-        setSessionToken(token)
+        setSessionToken(currentToken)
       }
 
       // ── PAYMENT BYPASS ───────────────────────────────────────────────────
@@ -137,8 +140,11 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowP
             router.push('/dashboard')
             return
           }
-          // Append utm_source so the Calendly webhook can link back to this booking
-          window.location.href = `${calendlyLink}?utm_source=${sessionToken ?? ''}`
+          // Append prefill data and utm_source so the Calendly webhook can link back to this booking
+          const separator = calendlyLink.includes('?') ? '&' : '?'
+          const nameParam = studentName ? `&name=${encodeURIComponent(studentName)}` : ''
+          const emailParam = studentEmail ? `&email=${encodeURIComponent(studentEmail)}` : ''
+          window.location.href = `${calendlyLink}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`
         }, 1500)
         return
       }
@@ -191,7 +197,10 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowP
 
             // ── Step 5: Redirect to Calendly (utm_source=sessionToken) ─────
             setStep('redirecting')
-            window.location.href = cUrl
+            const separator = cUrl.includes('?') ? '&' : '?'
+            const nameParam = studentName ? `&name=${encodeURIComponent(studentName)}` : ''
+            const emailParam = studentEmail ? `&email=${encodeURIComponent(studentEmail)}` : ''
+            window.location.href = `${cUrl}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`
             resolve()
           },
           modal: {
@@ -220,7 +229,7 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowP
   const stepLabel: Record<FlowStep, string> = {
     idle:             'Book a Session — ₹150',
     creating_booking: 'Creating booking…',
-    booked:           'Booking confirmed! ✅',
+    booked:           'Redirecting to schedule…',
     creating_order:   'Preparing payment…',
     razorpay_open:    'Complete payment in Razorpay…',
     verifying:        'Verifying payment…',
@@ -235,7 +244,7 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowP
       {step === 'booked' && (
         <div className="booking-flow__success" role="status">
           <p className="booking-flow__success-msg">
-            ✅ Booking confirmed! Redirecting to your dashboard…
+            ✅ Booking created! Redirecting to schedule your session…
           </p>
         </div>
       )}

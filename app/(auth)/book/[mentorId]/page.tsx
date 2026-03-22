@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import { BookingFlow } from '@/components/booking/BookingFlow'
 import { getMentorById } from '@/services/mentor.service'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 interface BookPageProps {
   params: Promise<{ mentorId: string }>
@@ -11,6 +13,7 @@ interface BookPageProps {
 export default async function BookPage({ params }: BookPageProps) {
   const { mentorId } = await params
 
+  const session = await getServerSession(authOptions)
   const mentor = await getMentorById(mentorId)
   if (!mentor) notFound()
 
@@ -61,6 +64,8 @@ export default async function BookPage({ params }: BookPageProps) {
           mentorId={mentorId}
           mentorName={displayName}
           calendlyLink={mentor.calendlyLink}
+          studentName={session?.user?.name}
+          studentEmail={session?.user?.email}
         />
 
         <p className="book-page__disclaimer">

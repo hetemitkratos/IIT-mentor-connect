@@ -56,7 +56,7 @@ export async function handleRazorpayWebhook(body: string, signature: string) {
       })
       await tx.booking.update({
         where: { id: payment.bookingId },
-        data:  { status: 'payment_complete' },
+        data:  { status: 'scheduled' },   // Schedule First → Pay Later: Razorpay confirms final step
       })
     })
 
@@ -93,75 +93,72 @@ export function verifyCalendlySignature(body: string, signatureHeader: string): 
   return expected === v1
 }
 
-export async function handleCalendlyWebhook(payload: Record<string, unknown>) {
-  const event = payload.event as string
-  if (event !== 'invitee.created') return { skipped: true }
+export async function handleCalendlyWebhook(payload: any) {
+  const eventType = payload.event as string
+  if (eventType !== 'invitee.created') return { skipped: true }
 
-  const calendlyPayload = payload.payload as Record<string, unknown>
-  const tracking        = calendlyPayload?.tracking as Record<string, unknown>
-  const sessionToken    = tracking?.utm_source as string
-  const eventData       = calendlyPayload?.event as Record<string, unknown>
-  const eventUuid       = eventData?.uuid as string
+  // Step 3 — Extract sessionToken Correctly
+  const sessionToken = payload.payload?.tracking?.utm_source as string
 
-  // Fix #6 + webhook idempotency: primary guard via webhook_events table
-  const logEntry = await logWebhookEvent('calendly', eventUuid, payload)
-  if (!logEntry) return { duplicate: true }
-
+  // Step 4 — Validate sessionToken
   if (!sessionToken) {
-    await markWebhookProcessed(eventUuid, 'Missing utm_source — cannot link booking')
-    return { error: 'missing_utm_source' }
+    console.error("Missing sessionToken in webhook");
+    return { error: 'missing_session_token' };
   }
 
-  const booking = await prisma.booking.findFirst({
-    where: { sessionToken },
-  })
+  // Step 5 — Find Booking
+  const booking = await prisma.booking.findUnique({
+    where: { sessionToken }
+  });
 
-  // Fix #3: Prevent invalid state transition — only update if payment_complete
+  // Step 6 — Validate Booking Exists
   if (!booking) {
-    await markWebhookProcessed(eventUuid, 'No booking found for session token')
-    return { error: 'booking_not_found' }
+    console.error("Booking not found for sessionToken:", sessionToken);
+    return { error: 'booking_not_found' };
   }
 
-  // Fix #6: Second idempotency guard — booking already scheduled
-  if (booking.status === 'scheduled') {
-    await markWebhookProcessed(eventUuid)
-    return { duplicate: true }
+  // Step 7 — Extract Event Data
+  const event = payload.payload.scheduled_event;
+  const startTime = event.start_time;
+  const endTime = event.end_time;
+  const meetingLink = event.location?.join_url || null;
+  const calendlyEventId = event.uri ? event.uri.split('/').pop() : null;
+
+  // Step 9 — Handle Idempotency
+  if (booking.status === "awaiting_payment" || booking.status === "scheduled") {
+    console.log("Webhook already processed");
+    return { duplicate: true };
   }
 
-  // During dev/testing (PAYMENT_ENABLED=false), booking stays at payment_pending
-  // because the payment step is bypassed. Accept both valid pre-scheduling statuses.
-  const validPreSchedulingStatuses = ['payment_complete', 'payment_pending']
-
-  // Fix #3 + #8: Only allow valid status transitions
+  // Fix #4: Log out-of-order or invalid-state webhook for observability
+  const validPreSchedulingStatuses = ['payment_pending']
   if (!validPreSchedulingStatuses.includes(booking.status)) {
-    // Fix #4: Log out-of-order or invalid-state webhook for observability
     console.warn('[CALENDLY_WEBHOOK_IGNORED] Invalid booking status', {
       bookingId:      booking.id,
       currentStatus:  booking.status,
       expectedStatus: validPreSchedulingStatuses,
       sessionToken,
-      eventUuid,
     })
-    await markWebhookProcessed(
-      eventUuid,
-      `Invalid booking status: ${booking.status} — expected ${validPreSchedulingStatuses.join(' or ')}`
-    )
     return { error: 'invalid_booking_status' }
   }
 
-  const location = (eventData?.location as Record<string, unknown>)
+  try {
+    // Step 8 — Update Booking
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        meetingLink,
+        calendlyEventId,
+        status: "awaiting_payment"
+      }
+    });
+    console.log("Booking successfully updated with Webhook event details:", booking.id);
+  } catch (err) {
+    console.error("Failed to update booking in webhook:", err);
+    throw err;
+  }
 
-  await prisma.booking.update({
-    where: { id: booking.id },
-    data: {
-      status:         'scheduled',
-      calendlyEventId: eventUuid,
-      meetingLink:    (location?.join_url as string) ?? null,
-      startTime:      eventData?.start_time ? new Date(eventData.start_time as string) : null,
-      endTime:        eventData?.end_time   ? new Date(eventData.end_time   as string) : null,
-    },
-  })
-
-  await markWebhookProcessed(eventUuid)
   return { processed: true }
 }

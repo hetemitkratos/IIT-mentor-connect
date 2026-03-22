@@ -6,7 +6,18 @@ import {
 import { success, error } from '@/lib/api-response'
 
 export async function POST(req: NextRequest) {
+  console.log("CALENDLY WEBHOOK HIT");
+
   const body            = await req.text()
+  
+  let payload: Record<string, unknown>
+  try {
+    payload = JSON.parse(body)
+    console.log("Webhook Payload:", JSON.stringify(payload, null, 2));
+  } catch {
+    return error('Invalid JSON payload', 400)
+  }
+
   const signatureHeader = req.headers.get('calendly-webhook-signature') ?? ''
 
   // IMPORTANT: Re-enable strict signature verification in production.
@@ -27,18 +38,11 @@ export async function POST(req: NextRequest) {
     console.warn('[CALENDLY_WEBHOOK] ⚠️  Signature verification SKIPPED — set CALENDLY_WEBHOOK_SECRET in .env for production')
   }
 
-  let payload: Record<string, unknown>
-  try {
-    payload = JSON.parse(body)
-  } catch {
-    return error('Invalid JSON payload', 400)
-  }
-
   try {
     const result = await handleCalendlyWebhook(payload)
     return success(result)
-  } catch {
+  } catch (err) {
+    console.error('[CALENDLY_WEBHOOK] processing error:', err)
     return error('Webhook processing failed', 500)
   }
 }
-

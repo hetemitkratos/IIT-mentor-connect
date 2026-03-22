@@ -87,7 +87,7 @@ export async function getMentorBookings(
 }
 
 /** Statuses from which a booking can be cancelled */
-const CANCELLABLE_STATUSES = ['payment_pending', 'payment_complete', 'scheduled'] as const
+const CANCELLABLE_STATUSES = ['payment_pending', 'awaiting_payment', 'payment_complete', 'scheduled'] as const
 
 export async function cancelBooking(bookingId: string, userId: string, role: string) {
   const booking = await prisma.booking.findUnique({
