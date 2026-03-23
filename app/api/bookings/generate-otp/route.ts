@@ -1,16 +1,22 @@
 import { NextRequest } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireAuth } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
+import { checkRateLimit } from '@/lib/security'
+import { generateOtpSchema } from '@/lib/validators/otp.validator'
 import { success, error } from '@/lib/api-response'
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return error('Unauthorized', 401)
+    const { user, response } = await requireAuth()
+    if (response) return response
 
-    const { bookingId } = await req.json()
-    if (!bookingId) return error('Missing bookingId', 400)
+    const rateLimitResponse = checkRateLimit(`generate_otp_${user!.id}`)
+    if (rateLimitResponse) return rateLimitResponse
+
+    const body = await req.json()
+    const parsed = generateOtpSchema.safeParse(body)
+    if (!parsed.success) return error(parsed.error.issues[0].message, 400)
+    const { bookingId } = parsed.data
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -20,7 +26,7 @@ export async function POST(req: NextRequest) {
     if (booking.status !== 'scheduled') return error('Invalid booking state', 400)
 
     // Ensure Role Safety
-    if (session.user.id !== booking.studentId) {
+    if (user!.id !== booking.studentId) {
       return error('Unauthorized', 403)
     }
 

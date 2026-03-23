@@ -4,7 +4,7 @@ import { SESSION_PRICE_RS } from '@/constants/pricing'
 // Statuses that represent an active/upcoming session
 // Student sees: scheduled (confirmed) + awaiting_payment (Calendly done, needs payment) + payment_pending (just created)
 // Mentor sees: only scheduled (via getMentorDashboard overriding this default)
-const UPCOMING_STATUSES = ['scheduled', 'awaiting_payment', 'payment_pending'] as const
+const UPCOMING_STATUSES = ['scheduled', 'in_progress', 'awaiting_payment', 'payment_pending'] as const
 // Statuses that represent a concluded session
 const PAST_STATUSES = ['completed', 'cancelled'] as const
 
@@ -61,7 +61,7 @@ export async function getMentorDashboard(mentorId: string) {
       where: {
         mentorId,
         // Mentor only sees paid, confirmed sessions
-        status: { in: ['scheduled'] as const },
+        status: { in: ['scheduled', 'in_progress'] as const },
       },
       include: { student: { select: { name: true, image: true } } },
       orderBy: { startTime: 'asc' },   // nearest session first

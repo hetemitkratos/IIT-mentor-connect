@@ -106,6 +106,8 @@ model Booking {
   otp             String?
   otpGeneratedAt  DateTime?     @map("otp_generated_at")
   otpVerified     Boolean       @default(false) @map("otp_verified")
+  rating          Int?
+  review          String?       @db.VarChar(300)
   mentor          Mentor        @relation(fields: [mentorId], references: [id])
   student         User          @relation("StudentBookings", fields: [studentId], references: [id])
   payment         Payment?
@@ -158,6 +160,7 @@ enum BookingStatus {
   awaiting_payment
   payment_complete
   scheduled
+  in_progress
   completed
   cancelled
 }

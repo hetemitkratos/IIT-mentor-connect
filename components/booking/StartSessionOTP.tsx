@@ -63,7 +63,9 @@ export default function StartSessionOTP({
     return () => clearInterval(intId)
   }, [startTime, status, currentOtpGeneratedAt, otpVerified])
 
-  if (status !== 'scheduled') return null
+  if (!['scheduled', 'in_progress'].includes(status)) return null
+
+  const isVerified = otpVerified || status === 'in_progress'
 
   if (otpVerified) {
     return (
@@ -98,13 +100,13 @@ export default function StartSessionOTP({
   }
 
   const otpExistsAndValid = Boolean(otp && !isExpired)
-  const canJoinMeeting = otpVerified || otpExistsAndValid
+  const canJoinMeeting = isVerified || otpExistsAndValid
 
   return (
     <div className="mt-4 border-t border-gray-100 pt-4">
       {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
 
-      {!otpVerified && otpExistsAndValid && (
+      {!isVerified && otpExistsAndValid && (
         <div className="p-4 bg-blue-50 rounded-lg text-center border border-blue-100 mb-4">
           <p className="text-sm text-blue-700 font-semibold mb-1">Your Session OTP</p>
           <p className="text-3xl font-mono tracking-[0.2em] text-blue-900 bg-white rounded-md py-2 shadow-sm">
@@ -116,7 +118,7 @@ export default function StartSessionOTP({
         </div>
       )}
 
-      {!otpVerified && !otpExistsAndValid && (
+      {!isVerified && !otpExistsAndValid && (
         <div className="flex flex-col items-center mb-4">
           <button
             onClick={handleGenerateOTP}
@@ -174,7 +176,12 @@ export default function StartSessionOTP({
           </span>
         )}
         
-        {canJoinMeeting && !otpVerified && (
+        {canJoinMeeting && isVerified && (
+          <p className="text-xs text-green-600 mt-2 text-center font-medium">
+            ✅ Session Verified and In Progress.
+          </p>
+        )}
+        {canJoinMeeting && !isVerified && (
           <p className="text-xs text-green-600 mt-2 text-center">
             OTP generated. You can now join the meeting.
           </p>

@@ -12,14 +12,14 @@ export default function VerifySessionOTP({ bookingId, otpVerified, status }: Pro
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(otpVerified)
+  const [success, setSuccess] = useState(otpVerified || status === 'in_progress')
 
-  if (status !== 'scheduled' && !success) return null
+  if (!['scheduled', 'in_progress'].includes(status) && !success) return null
 
   if (success) {
     return (
       <div className="mt-4 inline-block px-4 py-2 bg-green-100 text-green-800 text-sm font-medium rounded-md">
-        ✅ Session Verified
+        ✅ Session Verified & In Progress
       </div>
     )
   }

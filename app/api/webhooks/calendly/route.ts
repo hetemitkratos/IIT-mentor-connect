@@ -18,6 +18,10 @@ export async function POST(req: NextRequest) {
     return error('Invalid JSON payload', 400)
   }
 
+  if (payload.event !== 'invitee.created') {
+    return Response.json({ ignored: true })
+  }
+
   const signatureHeader = req.headers.get('calendly-webhook-signature') ?? ''
 
   // IMPORTANT: Re-enable strict signature verification in production.

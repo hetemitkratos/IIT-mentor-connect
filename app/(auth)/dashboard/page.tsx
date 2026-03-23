@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import LogoutButton from '@/components/auth/LogoutButton'
 import StartSessionOTP from '@/components/booking/StartSessionOTP'
+import RateSession from '@/components/booking/RateSession'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -17,15 +18,17 @@ const STATUS_STYLES: Record<string, string> = {
   awaiting_payment: 'status--processing',
   payment_complete: 'status--processing',
   scheduled:        'status--scheduled',
+  in_progress:      'status--scheduled',
   completed:        'status--completed',
   cancelled:        'status--cancelled',
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  payment_pending:  'Booking Created',
-  awaiting_payment: 'Complete Payment',
-  payment_complete: 'Payment Received',
+  payment_pending:  'Payment Pending',
+  awaiting_payment: 'Awaiting Payment',
+  payment_complete: 'Payment Complete',
   scheduled:        'Scheduled',
+  in_progress:      'In Progress',
   completed:        'Completed',
   cancelled:        'Cancelled',
 }
@@ -199,23 +202,40 @@ export default async function StudentDashboardPage() {
           <h2 className="dashboard-section__title">Past Sessions</h2>
           <div className="booking-list booking-list--past">
             {past.map((b) => (
-              <div key={b.id} className="booking-card booking-card--muted">
-                <div className="booking-card__left">
-                  <div className="booking-card__info">
-                    <p className="booking-card__name">
-                      {b.mentor.user.name ?? 'IIT Mentor'}
-                    </p>
-                    <p className="booking-card__meta">
-                      {b.mentor.iit} · {b.mentor.branch}
-                    </p>
-                    <p className="booking-card__date">
-                      {formatDate(b.startTime ?? b.createdAt)}
-                    </p>
+              <div key={b.id} className="booking-card booking-card--muted flex-col">
+                <div className="flex w-full justify-between items-start">
+                  <div className="booking-card__left">
+                    <div className="booking-card__info">
+                      <p className="booking-card__name">
+                        {b.mentor.user.name ?? 'IIT Mentor'}
+                      </p>
+                      <p className="booking-card__meta">
+                        {b.mentor.iit} · {b.mentor.branch}
+                      </p>
+                      <p className="booking-card__date">
+                        {formatDate(b.startTime ?? b.createdAt)}
+                      </p>
+                    </div>
                   </div>
+                  <span className={`booking-card__status ${STATUS_STYLES[b.status] ?? ''}`}>
+                    {STATUS_LABELS[b.status] ?? b.status}
+                  </span>
                 </div>
-                <span className={`booking-card__status ${STATUS_STYLES[b.status] ?? ''}`}>
-                  {STATUS_LABELS[b.status] ?? b.status}
-                </span>
+                {/* Rating UI */}
+                {b.status === 'completed' && !b.rating && (
+                  <RateSession bookingId={b.id} initialRating={b.rating} />
+                )}
+                {b.status === 'completed' && b.rating && (
+                  <div className="mt-4 pt-3 border-t border-gray-100 w-full">
+                    <p className="text-xs text-gray-500 mb-1">Your Rating</p>
+                    <div className="flex gap-1 text-yellow-400 text-lg">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star}>{star <= b.rating! ? '★' : '☆'}</span>
+                      ))}
+                    </div>
+                    {b.review && <p className="text-gray-600 text-sm mt-2 font-medium italic">"{b.review}"</p>}
+                  </div>
+                )}
               </div>
             ))}
           </div>

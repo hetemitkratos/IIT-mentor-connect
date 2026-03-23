@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { getMentorDashboard } from '@/services/dashboard.service'
 import LogoutButton from '@/components/auth/LogoutButton'
 import VerifySessionOTP from '@/components/booking/VerifySessionOTP'
+import CompleteSessionButton from '@/components/booking/CompleteSessionButton'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -99,11 +100,11 @@ export default async function MentorDashboardPage() {
                       </p>
                     )}
                     <p className="text-xs text-gray-400 mt-1">
-                      Status: {b.status === 'scheduled' ? 'Scheduled' : 'Awaiting Time Selection'}
+                      Status: {b.status === 'in_progress' ? 'In Progress' : (b.status === 'scheduled' ? 'Scheduled' : 'Awaiting Time Selection')}
                     </p>
                   </div>
                   <div className="flex-shrink-0">
-                    {b.meetingLink ? (
+                    {['scheduled', 'in_progress'].includes(b.status) && b.meetingLink ? (
                       <a
                         href={b.meetingLink}
                         target="_blank"
@@ -122,6 +123,9 @@ export default async function MentorDashboardPage() {
                       otpVerified={b.otpVerified}
                       status={b.status}
                     />
+                    {b.status === 'in_progress' && (
+                      <CompleteSessionButton bookingId={b.id} />
+                    )}
                   </div>
                 </div>
               ))}

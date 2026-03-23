@@ -160,13 +160,14 @@ export default function ApplyPage() {
               id="bio"
               name="bio"
               required
+              maxLength={600}
               rows={4}
               placeholder="Tell us about yourself and why you want to mentor JEE aspirants (min 50 characters)"
               value={form.bio}
               onChange={handleChange}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
             />
-            <p className="text-xs text-gray-500 mt-1">{form.bio.length}/50 characters minimum</p>
+            <p className="text-xs text-gray-500 mt-1">{form.bio.length}/600 characters maximum</p>
           </div>
 
           {/* Calendly Link */}

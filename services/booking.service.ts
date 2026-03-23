@@ -2,6 +2,12 @@ import { prisma } from '@/lib/prisma'
 
 export async function createBooking(studentId: string, mentorId: string) {
   return prisma.$transaction(async (tx: typeof prisma) => {
+    // Integrity checks
+    const mentor = await tx.mentor.findUnique({ where: { id: mentorId } })
+    if (!mentor) throw new Error('MENTOR_NOT_FOUND')
+    if (mentor.userId === studentId) throw new Error('INVALID_BOOKING')
+    if (!mentor.isActive) throw new Error('MENTOR_INACTIVE')
+
     // Atomically check + create — eliminates race condition between two parallel requests
     const existing = await tx.booking.findFirst({
       where: {

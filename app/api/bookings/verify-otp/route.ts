@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkRateLimit, isOTPBlocked, recordFailedOTPAttempt, resetOTPAttempts } from '@/lib/security'
+import { verifyOtpSchema } from '@/lib/validators/otp.validator'
 import { success, error } from '@/lib/api-response'
 
 export async function POST(req: NextRequest) {
@@ -9,10 +11,13 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user) return error('Unauthorized', 401)
 
-    const { bookingId, otp } = await req.json()
-    if (!bookingId || !otp) return error('Missing bookingId or otp', 400)
+    const rateLimitResponse = checkRateLimit(`verify_otp_${session.user.id}`)
+    if (rateLimitResponse) return rateLimitResponse
 
-    if (otp.length !== 4) return error('Invalid OTP format', 400)
+    const body = await req.json()
+    const parsed = verifyOtpSchema.safeParse(body)
+    if (!parsed.success) return error(parsed.error.issues[0].message, 400)
+    const { bookingId, otp } = parsed.data
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -20,6 +25,11 @@ export async function POST(req: NextRequest) {
     })
 
     if (!booking) return error('Booking not found', 404)
+    if (booking.status !== 'scheduled') return error('Invalid booking status', 400)
+
+    if (isOTPBlocked(bookingId)) {
+      return error('Too many failed OTP attempts. Please wait 15 minutes.', 429)
+    }
 
     // Ensure Role Safety: Only the mentor for this booking can verify the OTP
     if (session.user.id !== booking.mentor.userId) {
@@ -56,15 +66,18 @@ export async function POST(req: NextRequest) {
 
     // Match OTP
     if (booking.otp !== otp) {
+      recordFailedOTPAttempt(bookingId)
       return error('Invalid OTP', 400)
     }
+
+    resetOTPAttempts(bookingId)
 
     // Update Verification and Mark Session Progress
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
         otpVerified: true,
-        status: 'completed',
+        status: 'in_progress',
       },
     })
 

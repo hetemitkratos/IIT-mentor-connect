@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
   const result = await prisma.booking.updateMany({
     where: {
-      status: 'scheduled',
+      status: 'in_progress',
       endTime: { lt: new Date() },
     },
     data: { status: 'completed' },
