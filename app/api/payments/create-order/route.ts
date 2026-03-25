@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/session'
 import { createRazorpayOrder } from '@/services/payment.service'
 import { createOrderSchema } from '@/lib/validators/payment.validator'
@@ -14,13 +14,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const order = await createRazorpayOrder(parsed.data.bookingId, user!.id)
-    return success(order)
+    console.log("RAZORPAY ORDER CREATED:", order);
+    return NextResponse.json(order)
   } catch (err: unknown) {
     if (err instanceof Error) {
       if (err.message === 'NOT_FOUND') return error('Booking not found', 404)
       if (err.message === 'INVALID_BOOKING_STATUS') return error('Booking is not in a payable state', 409)
     }
-    return error('Failed to create payment order', 500)
+    console.error("Create Order Error Debug:", err);
+    return error(`Failed to create payment order: ${err instanceof Error ? err.message : String(err)}`, 500)
   }
 }
 

@@ -60,7 +60,25 @@ export async function handleRazorpayWebhook(body: string, signature: string) {
       })
     })
 
+    console.log("Webhook captured payment:", payment.id);
     await markWebhookProcessed(orderId)
+  } else if (event === "payment.failed") {
+    const payment = await prisma.payment.findUnique({
+      where: { razorpayOrderId: orderId },
+    });
+
+    if (!payment) return { error: "payment_not_found" };
+
+    if (payment.status === "failed") return { duplicate: true };
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: "failed",
+      },
+    });
+
+    console.log("Payment failed:", payment.id);
   }
 
   return { processed: true }

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { razorpay } from '@/lib/razorpay'
 import { verifyRazorpayPaymentSignature } from '@/lib/hmac'
+import { createHmac } from 'crypto'
 import { SESSION_PRICE_PAISE } from '@/constants/pricing'
 
 export async function createRazorpayOrder(bookingId: string, studentId: string) {
@@ -21,11 +22,13 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
       orderId:    existingPayment.razorpayOrderId,
       amount:     existingPayment.amount,
       currency:   existingPayment.currency,
-      keyId:      process.env.RAZORPAY_KEY_ID!,
+      key:        process.env.RAZORPAY_KEY_ID!,
       calendlyUrl,
     }
   }
 
+  console.log("Creating Razorpay order for booking:", booking.id);
+  
   const order = await razorpay.orders.create({
     amount:   SESSION_PRICE_PAISE,
     currency: 'INR',
@@ -37,10 +40,17 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
       bookingId,
       razorpayOrderId: order.id,
       amount:          SESSION_PRICE_PAISE,
+      platformFee:     5000,
+      mentorAmount:    10000,
       currency:        'INR',
-      status:          'pending',
+      status:          'pending', // maintaining ENUM as requested by User
     },
   })
+
+  console.log("PAYMENT SAVED:", {
+    bookingId,
+    razorpayOrderId: order.id,
+  });
 
   const calendlyUrl = `${booking.mentor.calendlyLink}?utm_source=${booking.sessionToken}`
 
@@ -48,7 +58,7 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
     orderId:    order.id,
     amount:     SESSION_PRICE_PAISE,
     currency:   'INR',
-    keyId:      process.env.RAZORPAY_KEY_ID!,
+    key:        process.env.RAZORPAY_KEY_ID!,
     calendlyUrl,
   }
 }
@@ -58,22 +68,37 @@ export async function verifyPayment(
   razorpayPaymentId: string,
   razorpaySignature: string
 ) {
-  // Step 1: HMAC-SHA256 signature verification — always first
-  const isValid = verifyRazorpayPaymentSignature(
-    razorpayOrderId,
-    razorpayPaymentId,
-    razorpaySignature
-  )
+// Step 1: HMAC-SHA256 signature verification — temporarily bypassed for debug
+  const secret = process.env.RAZORPAY_KEY_SECRET!
+  const expectedSignature = createHmac('sha256', secret)
+    .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+    .digest('hex')
+
+  console.log("EXPECTED SIGNATURE:", expectedSignature)
+  console.log("RECEIVED SIGNATURE:", razorpaySignature)
+
+  const isValid = expectedSignature === razorpaySignature
   if (!isValid) throw new Error('INVALID_SIGNATURE')
 
-  const payment = await prisma.payment.findUnique({ where: { razorpayOrderId } })
-  if (!payment) throw new Error('PAYMENT_NOT_FOUND')
+  console.log("LOOKING FOR ORDER:", razorpayOrderId);
+
+  const payment = await prisma.payment.findFirst({
+    where: { razorpayOrderId },
+    include: { booking: true },
+  })
+
+  console.log("FOUND PAYMENT:", payment);
+
+  if (!payment) {
+    console.error("PAYMENT NOT FOUND FOR:", razorpayOrderId);
+    throw new Error('PAYMENT_NOT_FOUND')
+  }
 
   // Fix #2 (idempotency): payment already verified — return success without re-updating
   if (payment.status === 'successful') return { success: true, alreadyVerified: true }
 
   // Fix #2 (transactional): payment + booking update must be atomic
-  await prisma.$transaction(async (tx: typeof prisma) => {
+  await prisma.$transaction(async (tx) => {
     await tx.payment.update({
       where: { razorpayOrderId },
       data:  { status: 'successful', razorpayPaymentId },
@@ -83,6 +108,8 @@ export async function verifyPayment(
       data:  { status: 'scheduled' },   // Schedule First → Pay Later: payment = final step
     })
   })
+
+  console.log("Payment verified:", payment.id);
 
   return { success: true }
 }

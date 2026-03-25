@@ -6,6 +6,7 @@ import Link from 'next/link'
 import LogoutButton from '@/components/auth/LogoutButton'
 import StartSessionOTP from '@/components/booking/StartSessionOTP'
 import RateSession from '@/components/booking/RateSession'
+import CompletePaymentButton from '@/components/booking/CompletePaymentButton'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -186,6 +187,9 @@ export default async function StudentDashboardPage() {
                     otpGeneratedAt={b.otpGeneratedAt}
                     meetingLink={b.meetingLink}
                   />
+                  {b.status === 'awaiting_payment' && (
+                    <CompletePaymentButton bookingId={b.id} sessionToken={b.sessionToken} />
+                  )}
                 </div>
                 <span className={`booking-card__status ${STATUS_STYLES[b.status] ?? ''}`}>
                   {STATUS_LABELS[b.status] ?? b.status}

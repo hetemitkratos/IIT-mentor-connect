@@ -123,9 +123,12 @@ model Payment {
   razorpayOrderId   String        @unique @map("razorpay_order_id")
   razorpayPaymentId String?       @map("razorpay_payment_id")
   amount            Int
+  platformFee       Int           @default(5000) @map("platform_fee")
+  mentorAmount      Int           @default(10000) @map("mentor_amount")
   currency          String        @default("INR")
   status            PaymentStatus @default(pending)
   createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
   booking           Booking       @relation(fields: [bookingId], references: [id])
 
   @@map("payments")
