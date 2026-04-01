@@ -53,19 +53,22 @@ model Session {
 }
 
 model MentorApplication {
-  id           String            @id @default(uuid())
-  userId       String            @map("user_id")
-  iit          String
-  branch       String
-  year         Int
-  languages    String[]
-  bio          String
-  calendlyLink String            @map("calendly_link")
-  collegeIdUrl String            @map("college_id_url")
-  status       ApplicationStatus @default(pending)
-  reviewedAt   DateTime?         @map("reviewed_at")
-  createdAt    DateTime          @default(now()) @map("created_at")
-  user         User              @relation(fields: [userId], references: [id])
+  id              String            @id @default(uuid())
+  userId          String            @map("user_id")
+  iit             String
+  branch          String
+  year            Int
+  rank            String?           @map("air_rank")
+  state           String            @default("")
+  languages       String[]
+  bio             String
+  calendlyLink    String            @map("calendly_link")
+  collegeIdUrl    String            @map("college_id_url")
+  status          ApplicationStatus @default(pending)
+  rejectionReason String?           @map("rejection_reason")
+  reviewedAt      DateTime?         @map("reviewed_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  user            User              @relation(fields: [userId], references: [id])
 
   @@map("mentor_applications")
 }
@@ -76,6 +79,8 @@ model Mentor {
   iit          String
   branch       String
   year         Int
+  rank         String?   @map("air_rank")
+  state        String    @default("")
   languages    String[]
   bio          String
   calendlyLink String    @map("calendly_link")

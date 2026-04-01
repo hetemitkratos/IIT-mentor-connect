@@ -1,5 +1,8 @@
+import { useState } from 'react'
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { MentorCard } from './MentorCard'
 import { MentorCardSkeleton } from './MentorCardSkeleton'
+import { MentorProfileModal } from './MentorProfileModal'
 
 interface MentorData {
   id:           string
@@ -26,10 +29,12 @@ export function MentorGrid({
   isError,
   skeletonCount = 9,
 }: MentorGridProps) {
+  const [selectedMentor, setSelectedMentor] = useState<MentorData | null>(null)
+
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="mentor-grid" aria-busy="true" aria-label="Loading mentors">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" aria-busy="true" aria-label="Loading mentors">
         {Array.from({ length: skeletonCount }).map((_, i) => (
           <MentorCardSkeleton key={i} />
         ))}
@@ -40,8 +45,8 @@ export function MentorGrid({
   // ── Error ────────────────────────────────────────────────────────────────────
   if (isError) {
     return (
-      <div className="mentor-grid__state mentor-grid__state--error" role="alert">
-        <p>⚠️ Failed to load mentors. Please try again.</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center" role="alert">
+        <p className="text-[#ef4444] font-medium text-lg">⚠️ Failed to load mentors. Please try again.</p>
       </div>
     )
   }
@@ -49,18 +54,39 @@ export function MentorGrid({
   // ── Empty ────────────────────────────────────────────────────────────────────
   if (mentors.length === 0) {
     return (
-      <div className="mentor-grid__state mentor-grid__state--empty">
-        <p>🔍 No mentors found. Try adjusting your filters.</p>
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-16 h-16 bg-[#f1f5f9] rounded-full flex items-center justify-center mb-4">
+          <svg className="w-8 h-8 text-[#94a3b8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        </div>
+        <h3 className="text-xl font-semibold text-[#0f172a] mb-2 font-['Inter']">No mentors found</h3>
+        <p className="text-[#64748b] text-base font-['Inter'] max-w-sm">
+          We couldn't find any mentors matching your current filters. Try adjusting them or clear all filters.
+        </p>
       </div>
     )
   }
 
   // ── Populated ────────────────────────────────────────────────────────────────
   return (
-    <div className="mentor-grid">
-      {mentors.map((mentor) => (
-        <MentorCard key={mentor.id} mentor={mentor} />
-      ))}
-    </div>
+    <LayoutGroup id="mentor-profile-group">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        {mentors.map((mentor) => (
+          <MentorCard 
+            key={mentor.id} 
+            mentor={mentor} 
+            onSelect={() => setSelectedMentor(mentor)} 
+          />
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {selectedMentor && (
+          <MentorProfileModal 
+            mentor={selectedMentor} 
+            onClose={() => setSelectedMentor(null)} 
+          />
+        )}
+      </AnimatePresence>
+    </LayoutGroup>
   )
 }

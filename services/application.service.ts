@@ -1,16 +1,11 @@
 import { prisma } from '@/lib/prisma'
 import { getCollegeIdSignedUrl } from '@/lib/supabase'
 
+import { MentorApplyInput } from '@/lib/validators/mentor.validator'
+
 export async function submitApplication(
   userId: string,
-  data: {
-    iit: string
-    branch: string
-    year: number
-    languages: string[]
-    bio: string
-    calendlyLink: string
-  },
+  data: MentorApplyInput,
   fileUrl: string
 ) {
   const existing = await prisma.mentorApplication.findFirst({
@@ -18,8 +13,25 @@ export async function submitApplication(
   })
   if (existing) throw new Error('DUPLICATE_APPLICATION')
 
+  // Update user name if different
+  await prisma.user.update({
+    where: { id: userId },
+    data: { name: data.fullName }
+  })
+
   return prisma.mentorApplication.create({
-    data: { userId, ...data, collegeIdUrl: fileUrl },
+    data: { 
+      userId, 
+      iit: data.iit,
+      branch: data.branch,
+      year: parseInt(data.year, 10),
+      rank: data.rank,
+      state: data.state,
+      languages: data.languages.split(',').map(s => s.trim()).filter(Boolean),
+      bio: data.bio,
+      calendlyLink: data.calendlyLink,
+      collegeIdUrl: fileUrl 
+    },
   })
 }
 

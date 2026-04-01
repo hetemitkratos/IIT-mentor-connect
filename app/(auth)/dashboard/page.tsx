@@ -2,68 +2,24 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import Link from 'next/link'
-import LogoutButton from '@/components/auth/LogoutButton'
-import StartSessionOTP from '@/components/booking/StartSessionOTP'
-import RateSession from '@/components/booking/RateSession'
-import CompletePaymentButton from '@/components/booking/CompletePaymentButton'
+import StudentDashboardContent from '@/components/student/StudentDashboardContent'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'My Dashboard — IIT Mentor Connect',
 }
 
-// ── Status badge colours ─────────────────────────────────────────────────────
-const STATUS_STYLES: Record<string, string> = {
-  payment_pending:  'status--pending',
-  awaiting_payment: 'status--processing',
-  payment_complete: 'status--processing',
-  scheduled:        'status--scheduled',
-  in_progress:      'status--scheduled',
-  completed:        'status--completed',
-  cancelled:        'status--cancelled',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  payment_pending:  'Payment Pending',
-  awaiting_payment: 'Awaiting Payment',
-  payment_complete: 'Payment Complete',
-  scheduled:        'Scheduled',
-  in_progress:      'In Progress',
-  completed:        'Completed',
-  cancelled:        'Cancelled',
-}
-
-function formatDate(date: Date | null): string {
-  if (!date) return '—'
-  return date.toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function getGoogleCalendarUrl(startTime: Date, endTime: Date | null, meetingLink: string | null): string {
-  const format = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, '')
-  const startStr = format(startTime)
-  const endStr = endTime ? format(endTime) : format(new Date(startTime.getTime() + 20 * 60 * 1000))
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Mentorship Session')}&dates=${startStr}/${endStr}&details=${encodeURIComponent('Session with mentor')}&location=${encodeURIComponent(meetingLink ?? '')}`
-}
-
-// ── Page ─────────────────────────────────────────────────────────────────────
 export default async function StudentDashboardPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) redirect('/')
 
-  // Role-based redirect — mentors and admins go to their own dashboards
+  // Role guards
   const role = session.user.role
   if (role === 'mentor') redirect('/mentor/dashboard')
   if (role === 'admin') redirect('/admin')
 
   const bookings = await prisma.booking.findMany({
-    where:   { studentId: session.user.id },
+    where: { studentId: session.user.id },
     include: {
       mentor: {
         include: {
@@ -74,191 +30,19 @@ export default async function StudentDashboardPage() {
     orderBy: { createdAt: 'desc' },
   })
 
-  // ── Split into upcoming / past ─────────────────────────────────────────────
-  const upcoming = bookings.filter(
-    (b) => !['completed', 'cancelled'].includes(b.status)
-  )
-  const past = bookings.filter(
-    (b) => ['completed', 'cancelled'].includes(b.status)
-  )
+  const uniqueMentors = new Set(bookings.map(b => b.mentorId)).size
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
-  const stats = [
-    { label: 'Total Bookings', value: bookings.length },
-    { label: 'Upcoming / Active', value: upcoming.length },
-    { label: 'Completed', value: bookings.filter((b) => b.status === 'completed').length },
-  ]
+  const stats = {
+    completed: bookings.filter(b => b.status === 'completed').length,
+    upcoming:  bookings.filter(b => !['completed', 'cancelled'].includes(b.status)).length,
+    mentorsConsulted: uniqueMentors,
+  }
 
   return (
-    <main className="dashboard-page">
-
-      {/* Header */}
-      <div className="dashboard-page__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 className="dashboard-page__title">My Dashboard</h1>
-          <p className="dashboard-page__subtitle">
-            Welcome back, {session.user.name ?? 'Student'} 👋
-          </p>
-        </div>
-        <LogoutButton />
-      </div>
-
-      {/* Stats row */}
-      <div className="dashboard-stats">
-        {stats.map((s) => (
-          <div key={s.label} className="dashboard-stats__card">
-            <span className="dashboard-stats__value">{s.value}</span>
-            <span className="dashboard-stats__label">{s.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Upcoming / Active bookings */}
-      <section className="dashboard-section">
-        <h2 className="dashboard-section__title">Upcoming &amp; Active Sessions</h2>
-
-        {upcoming.length === 0 ? (
-          <div className="dashboard-empty">
-            <p>No active sessions yet.</p>
-            <Link href="/mentors" className="dashboard-empty__cta">
-              Browse mentors →
-            </Link>
-          </div>
-        ) : (
-          <div className="booking-list">
-            {upcoming.map((b) => (
-              <div key={b.id} className="booking-card">
-                <div className="booking-card__left">
-                  {b.mentor.user.image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={b.mentor.user.image}
-                      alt={b.mentor.user.name ?? 'Mentor'}
-                      className="booking-card__avatar"
-                      width={48}
-                      height={48}
-                    />
-                  )}
-                  <div className="booking-card__info">
-                    <p className="booking-card__name">
-                      {b.mentor.user.name ?? 'IIT Mentor'}
-                    </p>
-                    <p className="booking-card__meta">
-                      {b.mentor.iit} · {b.mentor.branch} · Year {b.mentor.year}
-                    </p>
-                    <p className="booking-card__date">
-                      Booked on {formatDate(b.createdAt)}
-                    </p>
-                    {b.startTime && (
-                      <p className="booking-card__session-time">
-                        📅 Session: {formatDate(b.startTime)}
-                      </p>
-                    )}
-                    {['scheduled', 'awaiting_payment'].includes(b.status) && !b.meetingLink && (
-                      <span className="text-sm text-gray-500 italic block mt-2">
-                        ⏳ Syncing meeting link...
-                      </span>
-                    )}
-                    {['scheduled', 'awaiting_payment'].includes(b.status) && b.startTime ? (
-                      <a
-                        href={getGoogleCalendarUrl(b.startTime, b.endTime, b.meetingLink)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="booking-card__join-link"
-                        style={{ marginLeft: '12px', background: '#f3f4f6', color: '#374151' }}
-                      >
-                        📅 Add to Calendar
-                      </a>
-                    ) : ['scheduled', 'awaiting_payment'].includes(b.status) && !b.startTime && (
-                      <span
-                        className="booking-card__join-link"
-                        style={{ marginLeft: '12px', background: '#f3f4f6', color: '#9ca3af', textDecoration: 'none', cursor: 'default' }}
-                      >
-                        📅 Syncing calendar...
-                      </span>
-                    )}
-                  </div>
-                  <StartSessionOTP
-                    bookingId={b.id}
-                    startTime={b.startTime}
-                    status={b.status}
-                    initialOtp={b.otp}
-                    otpVerified={b.otpVerified}
-                    otpGeneratedAt={b.otpGeneratedAt}
-                    meetingLink={b.meetingLink}
-                  />
-                  {b.status === 'awaiting_payment' && (
-                    <CompletePaymentButton bookingId={b.id} sessionToken={b.sessionToken} />
-                  )}
-                </div>
-                <span className={`booking-card__status ${STATUS_STYLES[b.status] ?? ''}`}>
-                  {STATUS_LABELS[b.status] ?? b.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Past bookings */}
-      {past.length > 0 && (
-        <section className="dashboard-section">
-          <h2 className="dashboard-section__title">Past Sessions</h2>
-          <div className="booking-list booking-list--past">
-            {past.map((b) => (
-              <div key={b.id} className="booking-card booking-card--muted flex-col">
-                <div className="flex w-full justify-between items-start">
-                  <div className="booking-card__left">
-                    <div className="booking-card__info">
-                      <p className="booking-card__name">
-                        {b.mentor.user.name ?? 'IIT Mentor'}
-                      </p>
-                      <p className="booking-card__meta">
-                        {b.mentor.iit} · {b.mentor.branch}
-                      </p>
-                      <p className="booking-card__date">
-                        {formatDate(b.startTime ?? b.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`booking-card__status ${STATUS_STYLES[b.status] ?? ''}`}>
-                    {STATUS_LABELS[b.status] ?? b.status}
-                  </span>
-                </div>
-                {/* Rating UI */}
-                {b.status === 'completed' && !b.rating && (
-                  <RateSession bookingId={b.id} initialRating={b.rating} />
-                )}
-                {b.status === 'completed' && b.rating && (
-                  <div className="mt-4 pt-3 border-t border-gray-100 w-full">
-                    <p className="text-xs text-gray-500 mb-1">Your Rating</p>
-                    <div className="flex gap-1 text-yellow-400 text-lg">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <span key={star}>{star <= b.rating! ? '★' : '☆'}</span>
-                      ))}
-                    </div>
-                    {b.review && <p className="text-gray-600 text-sm mt-2 font-medium italic">"{b.review}"</p>}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* First-time empty state (no bookings at all) */}
-      {bookings.length === 0 && (
-        <div className="dashboard-empty dashboard-empty--center">
-          <p className="dashboard-empty__heading">No sessions yet</p>
-          <p className="dashboard-empty__body">
-            Browse IIT mentors and book your first 1:1 session for ₹150.
-          </p>
-          <Link href="/mentors" className="dashboard-empty__cta">
-            Book your first mentor session →
-          </Link>
-        </div>
-      )}
-
-    </main>
+    <StudentDashboardContent
+      studentName={session.user.name ?? 'Student'}
+      bookings={bookings as any}
+      stats={stats}
+    />
   )
 }

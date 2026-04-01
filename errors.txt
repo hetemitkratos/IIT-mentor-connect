@@ -1,0 +1,25 @@
+app/api/bookings/create/route.ts(23,41): error TS2339: Property 'id' does not exist on type 'any[]'.
+app/api/bookings/create/route.ts(23,67): error TS2339: Property 'sessionToken' does not exist on type 'any[]'.
+scripts/seed-otp-booking.ts(7,30): error TS2345: Argument of type 'Pool' is not assignable to parameter of type 'Pool | PoolConfig'.
+  Type 'import("D:/Tech_mentor/iit-mentor-connect/node_modules/@types/pg/index").Pool' is not assignable to type 'import("D:/Tech_mentor/iit-mentor-connect/node_modules/@prisma/adapter-pg/node_modules/@types/pg/index").Pool'.
+    The types of 'options.Client' are incompatible between these types.
+      Type '(new () => import("D:/Tech_mentor/iit-mentor-connect/node_modules/@types/pg/index").ClientBase) | undefined' is not assignable to type '(new () => import("D:/Tech_mentor/iit-mentor-connect/node_modules/@prisma/adapter-pg/node_modules/@types/pg/index").ClientBase) | undefined'.
+        Type 'new () => import("D:/Tech_mentor/iit-mentor-connect/node_modules/@types/pg/index").ClientBase' is not assignable to type 'new () => import("D:/Tech_mentor/iit-mentor-connect/node_modules/@prisma/adapter-pg/node_modules/@types/pg/index").ClientBase'.
+          Construct signature return types 'ClientBase' and 'ClientBase' are incompatible.
+            The types returned by 'connect()' are incompatible between these types.
+              Type 'Promise<ClientBase>' is not assignable to type 'Promise<void>'.
+                Type 'ClientBase' is not assignable to type 'void'.
+services/booking.service.ts(4,30): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(arg: PrismaPromise<any>[], options?: { isolationLevel?: TransactionIsolationLevel | undefined; } | undefined): Promise<any[]>', gave the following error.
+    Argument of type '(tx: typeof prisma) => Promise<{ id: string; createdAt: Date; mentorId: string; studentId: string; sessionToken: string; calendlyEventId: string | null; meetingLink: string | null; startTime: Date | null; ... 7 more ...; review: string | null; }>' is not assignable to parameter of type 'PrismaPromise<any>[]'.
+  Overload 2 of 2, '(fn: (prisma: Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$use" | "$extends">) => Promise<...>, options?: { ...; } | undefined): Promise<...>', gave the following error.
+    Argument of type '(tx: typeof prisma) => Promise<{ id: string; createdAt: Date; mentorId: string; studentId: string; sessionToken: string; calendlyEventId: string | null; meetingLink: string | null; startTime: Date | null; ... 7 more ...; review: string | null; }>' is not assignable to parameter of type '(prisma: Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$use" | "$extends">) => Promise<...>'.
+      Types of parameters 'tx' and 'prisma' are incompatible.
+        Type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$use" | "$extends">' is missing the following properties from type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>': $on, $connect, $disconnect, $extends
+services/booking.service.ts(125,30): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(arg: PrismaPromise<any>[], options?: { isolationLevel?: TransactionIsolationLevel | undefined; } | undefined): Promise<any[]>', gave the following error.
+    Argument of type '(tx: typeof prisma) => Promise<void>' is not assignable to parameter of type 'PrismaPromise<any>[]'.
+  Overload 2 of 2, '(fn: (prisma: Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$use" | "$extends">) => Promise<...>, options?: { ...; } | undefined): Promise<...>', gave the following error.
+    Argument of type '(tx: typeof prisma) => Promise<void>' is not assignable to parameter of type '(prisma: Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$use" | "$extends">) => Promise<...>'.
+      Types of parameters 'tx' and 'prisma' are incompatible.
+        Type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$use" | "$extends">' is missing the following properties from type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>': $on, $connect, $disconnect, $extends

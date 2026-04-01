@@ -1,12 +1,16 @@
 import { z } from 'zod'
 
 export const mentorApplySchema = z.object({
+  fullName: z.string().min(1, 'Full Name is required'),
   iit: z.string().min(1, 'IIT is required'),
   branch: z.string().min(1, 'Branch is required'),
-  year: z.number().int().min(1).max(5),
-  languages: z.array(z.string()).min(1, 'At least one language required'),
+  year: z.string().min(1, 'Year is required'),
+  rank: z.string().optional(),
+  state: z.string().min(1, 'Native State is required'),
+  languages: z.string().min(1, 'At least one language required'),
   bio: z.string().min(50, 'Bio must be at least 50 characters').max(600, 'Bio must be at most 600 characters'),
-  calendlyLink: z.string().url('Must be a valid Calendly URL'),
+  calendlyLink: z.string().min(1, 'Calendly Link is required'), // Relaxing URL check as user might input calendly.com/user
+  collegeIdUrl: z.string().min(1, 'College ID URL is required'), 
 })
 
 export const mentorProfileUpdateSchema = z.object({

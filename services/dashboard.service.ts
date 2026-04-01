@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { SESSION_PRICE_RS } from '@/constants/pricing'
+import { MENTOR_PAYOUT_RS } from '@/constants/pricing'
 
 // Statuses that represent an active/upcoming session
 // Student sees: scheduled (confirmed) + awaiting_payment (Calendly done, needs payment) + payment_pending (just created)
@@ -55,41 +55,45 @@ export async function getStudentDashboard(studentId: string) {
 }
 
 export async function getMentorDashboard(mentorId: string) {
-  // Single parallel batch — zero extra round-trips
-  const [upcomingBookings, pastBookings, totalCount, completedCount] = await Promise.all([
+  const [allBookings, completedCount, totalCount] = await Promise.all([
     prisma.booking.findMany({
-      where: {
-        mentorId,
-        // Mentor only sees paid, confirmed sessions
-        status: { in: ['scheduled', 'in_progress'] as const },
-      },
+      where: { mentorId },
       include: { student: { select: { name: true, image: true } } },
-      orderBy: { startTime: 'asc' },   // nearest session first
-      take: 5,
+      orderBy: { startTime: 'asc' },
     }),
-    prisma.booking.findMany({
-      where: {
-        mentorId,
-        status: { in: [...PAST_STATUSES] },
-      },
-      include: { student: { select: { name: true, image: true } } },
-      orderBy: { startTime: 'desc' },  // most recent first
-      take: 5,
-    }),
-    // Fix: DB count is not capped by take — accurate total
-    prisma.booking.count({ where: { mentorId } }),
     prisma.booking.count({ where: { mentorId, status: 'completed' } }),
+    prisma.booking.count({ where: { mentorId } }),
   ])
+
+  // Segment bookings by status
+  const ongoingBookings   = allBookings.filter(b => b.status === 'in_progress')
+  const upcomingBookings  = allBookings.filter(b => b.status === 'scheduled')
+  const completedBookings = allBookings.filter(b => b.status === 'completed')
+    .sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0))
+  const cancelledBookings = allBookings.filter(b => b.status === 'cancelled')
+    .sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0))
+
+  // Average rating from rated completed bookings
+  const ratedBookings = completedBookings.filter(b => b.rating != null)
+  const avgRating = ratedBookings.length > 0
+    ? ratedBookings.reduce((acc, b) => acc + (b.rating ?? 0), 0) / ratedBookings.length
+    : null
 
   return {
     upcomingBookings,
-    pastBookings,
+    ongoingBookings,
+    completedBookings,
+    cancelledBookings,
+    // Legacy field for backward compat
+    pastBookings: [...completedBookings, ...cancelledBookings],
     stats: {
       totalSessions:     totalCount,
       completedSessions: completedCount,
       upcomingSessions:  upcomingBookings.length,
-      // Fix: use SESSION_PRICE_RS = 150, not hardcoded 100
-      earningsRs:        completedCount * SESSION_PRICE_RS,
+      ongoingSessions:   ongoingBookings.length,
+      earningsRs:        completedCount * MENTOR_PAYOUT_RS,
+      rating:            avgRating,
     },
   }
 }
+

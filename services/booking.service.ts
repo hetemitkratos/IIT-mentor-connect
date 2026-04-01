@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 
 export async function createBooking(studentId: string, mentorId: string) {
-  return prisma.$transaction(async (tx: typeof prisma) => {
+  return prisma.$transaction(async (tx) => {
     // Integrity checks
     const mentor = await tx.mentor.findUnique({ where: { id: mentorId } })
     if (!mentor) throw new Error('MENTOR_NOT_FOUND')
@@ -122,7 +122,7 @@ export async function cancelBooking(bookingId: string, userId: string, role: str
     if (hoursUntilSession < requiredHours) throw new Error('CANCELLATION_WINDOW_PASSED')
   }
 
-  return prisma.$transaction(async (tx: typeof prisma) => {
+  return prisma.$transaction(async (tx) => {
     await tx.booking.update({
       where: { id: bookingId },
       data: { status: 'cancelled' },

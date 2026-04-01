@@ -16,6 +16,7 @@ export interface MentorListResponse {
     year: number
     languages: string[]
     bio: string
+    calendlyLink: string
     profileImage: string | null
     isActive: boolean
     createdAt: string

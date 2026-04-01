@@ -1,0 +1,492 @@
+/* ──────────────────────────────────────────────────────────
+   BECOME A MENTOR PAGE — Standalone stylesheet
+   Matches Figma node 123-3649
+────────────────────────────────────────────────────────── */
+
+/* ── Page shell ─────────────────────────────────────────── */
+.bam-page {
+  min-height: 100vh;
+  background: #edeeef;
+  font-family: var(--font-inter, Inter, sans-serif);
+}
+
+/* ── FORM SECTION ───────────────────────────────────────── */
+.bam-form-section {
+  width: 100%;
+  padding: 80px 24px 96px;
+  background: #edeeef;
+  box-sizing: border-box;
+}
+
+.bam-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 1536px;
+  margin: 0 auto;
+}
+
+.bam-form-heading {
+  width: 100%;
+  max-width: 752px;
+  padding-bottom: 48px;
+}
+
+.bam-h1 {
+  font-family: var(--font-epilogue, 'Epilogue', sans-serif);
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 40px;
+  color: #0f172a;
+  margin: 0;
+}
+
+/* ── White card ─────────────────────────────────────────── */
+.bam-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+  padding: 48px;
+  width: 752px;
+  max-width: calc(100vw - 48px);
+  box-sizing: border-box;
+}
+
+/* ── Form layout ────────────────────────────────────────── */
+.bam-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.bam-field-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bam-name-value {
+  font-size: 16px;
+  color: #6b7280;
+}
+
+.bam-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.bam-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Label */
+.bam-label {
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 20px;
+  color: #564335;
+  padding: 0 4px;
+  display: block;
+}
+
+.bam-label--inline {
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 20px;
+  color: #564335;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Text input */
+.bam-input {
+  display: block;
+  width: 100%;
+  height: 50px;
+  background: #ffffff;
+  border: 1px solid rgba(221, 193, 175, 0.4);
+  border-radius: 48px;
+  padding: 0 17px;
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-size: 16px;
+  color: #191c1d;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.bam-input::placeholder {
+  color: #6b7280;
+}
+
+.bam-input:focus {
+  border-color: #f5820a;
+  box-shadow: 0 0 0 3px rgba(245, 130, 10, 0.12);
+}
+
+/* Select wrapper */
+.bam-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.bam-select {
+  display: block;
+  width: 100%;
+  height: 50px;
+  background: #ffffff;
+  border: 1px solid rgba(221, 193, 175, 0.4);
+  border-radius: 48px;
+  padding: 0 40px 0 17px;
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-size: 16px;
+  color: #191c1d;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.bam-select:focus {
+  border-color: #f5820a;
+  box-shadow: 0 0 0 3px rgba(245, 130, 10, 0.12);
+}
+
+.bam-select-wrap > svg {
+  position: absolute;
+  right: 14px;
+  pointer-events: none;
+}
+
+/* Textarea */
+.bam-textarea {
+  display: block;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid rgba(221, 193, 175, 0.4);
+  border-radius: 24px;
+  padding: 13px 17px;
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-size: 16px;
+  color: #191c1d;
+  outline: none;
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.5;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.bam-textarea::placeholder {
+  color: #6b7280;
+}
+
+.bam-textarea:focus {
+  border-color: #f5820a;
+  box-shadow: 0 0 0 3px rgba(245, 130, 10, 0.12);
+}
+
+/* Language pills */
+.bam-lang-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bam-lang-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 17px;
+  border-radius: 9999px;
+  border: 1px solid rgba(221, 193, 175, 0.4);
+  background: #edeeef;
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 16px;
+  color: #564335;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.bam-lang-pill:hover {
+  border-color: #f5820a;
+  color: #f5820a;
+}
+
+.bam-lang-pill--active {
+  background: #fff7ed;
+  border-color: #f5820a;
+  color: #f5820a;
+  font-weight: 700;
+}
+
+/* Submit button */
+.bam-submit-wrap {
+  padding-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.bam-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f5820a;
+  color: #ffffff;
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  padding: 16px 48px;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s, opacity 0.2s;
+  white-space: nowrap;
+}
+
+.bam-submit-btn:hover:not(:disabled) {
+  background: #e07009;
+  transform: translateY(-1px);
+}
+
+.bam-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Success state */
+.bam-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 64px 48px;
+}
+
+.bam-success__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 36px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bam-success__title {
+  font-family: var(--font-epilogue, 'Epilogue', sans-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.bam-success__body {
+  font-size: 16px;
+  color: #6b7280;
+  max-width: 400px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── WHAT HAPPENS NEXT ──────────────────────────────────── */
+.bam-next-section {
+  width: 100%;
+  background: #ffffff;
+  padding: 96px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.bam-h2 {
+  font-family: var(--font-epilogue, 'Epilogue', sans-serif);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 36px;
+  color: #0f172a;
+  margin: 0 0 64px;
+  text-align: center;
+}
+
+.bam-timeline-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 896px;
+}
+
+.bam-timeline-line {
+  position: absolute;
+  top: 32px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #e2e8f0;
+  z-index: 0;
+}
+
+.bam-timeline {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.bam-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 240px;
+  text-align: center;
+}
+
+.bam-step__icon-wrap {
+  margin-bottom: 24px;
+}
+
+.bam-step__circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 4px solid #f5820a;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.bam-step__circle:hover {
+  transform: scale(1.08);
+}
+
+.bam-step__title {
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  color: #0f172a;
+  margin: 0 0 8px;
+}
+
+.bam-step__desc {
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  color: #564335;
+  margin: 0;
+}
+
+/* ── BENEFIT CARDS ──────────────────────────────────────── */
+.bam-benefits-section {
+  width: 100%;
+  background: #edeeef;
+  padding: 64px 44px;
+  box-sizing: border-box;
+}
+
+.bam-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  max-width: 1353px;
+  margin: 0 auto;
+}
+
+.bam-benefit-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(147, 75, 0, 0.05);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.bam-benefit-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 28px 48px rgba(147, 75, 0, 0.1);
+}
+
+.bam-benefit-card__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 48px;
+  background: #fff7ed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bam-benefit-card__title {
+  font-family: var(--font-epilogue, 'Epilogue', sans-serif);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 28px;
+  color: #0f172a;
+  margin: 0;
+}
+
+.bam-benefit-card__desc {
+  font-family: var(--font-manrope, 'Manrope', sans-serif);
+  font-size: 16px;
+  line-height: 24px;
+  color: #564335;
+  margin: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 800px) {
+  .bam-card {
+    padding: 32px 24px;
+  }
+
+  .bam-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .bam-h1 {
+    font-size: 28px;
+  }
+
+  .bam-benefits {
+    grid-template-columns: 1fr;
+  }
+
+  .bam-timeline {
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .bam-timeline-line {
+    display: none;
+  }
+
+  .bam-next-section {
+    padding: 60px 20px;
+  }
+}
