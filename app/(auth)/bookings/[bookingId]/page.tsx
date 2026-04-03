@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Booking Detail — IIT Mentor Connect' }
+export const metadata: Metadata = { title: 'Booking Detail — CandidConversation' }
 
 export default async function BookingDetailPage({ params }: { params: Promise<{ bookingId: string }> }) {
   const { bookingId } = await params

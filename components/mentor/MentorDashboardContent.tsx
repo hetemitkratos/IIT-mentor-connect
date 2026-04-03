@@ -286,7 +286,7 @@ function OngoingCard({ b }: { b: BookingRow }) {
                 </svg>
                 {fmt(b.startTime)}
               </span>
-              <StatusBadge status="in_progress" />
+              <StatusBadge status={b.status} />
             </div>
           </div>
         </div>

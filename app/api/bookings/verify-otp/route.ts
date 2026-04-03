@@ -59,8 +59,8 @@ export async function POST(req: NextRequest) {
 
     const generatedAt = new Date(booking.otpGeneratedAt)
 
-    // Check expiry (10 min max)
-    if (now.getTime() - generatedAt.getTime() > 10 * 60 * 1000) {
+    // Check expiry (15 min max)
+    if (now.getTime() - generatedAt.getTime() > 15 * 60 * 1000) {
       return error('OTP expired', 400)
     }
 

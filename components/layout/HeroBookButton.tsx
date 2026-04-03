@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
-function ArrowIcon({ className = 'w-4 h-4' }: { className?: string }) {
+function ArrowIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 16 16" fill="none">
+    <svg className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${className}`.trim()} viewBox="0 0 16 16" fill="none">
       <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
@@ -57,10 +57,11 @@ export function HeroBookButton({ className }: { className?: string }) {
     <button
       onClick={handleClick}
       disabled={!destination}
-      className={className ?? 'btn-primary hero__cta-primary'}
+      className={`group ${className ?? 'btn-primary hero__cta-primary'}`}
       style={!destination ? { opacity: 0.7, cursor: 'default' } : undefined}
     >
-      Book a Session <ArrowIcon />
+      <span className="hidden sm:inline">Talk Before You Choose</span>
+      <span className="sm:hidden">Book Now</span> <ArrowIcon className="ml-1" />
     </button>
   )
 }
@@ -93,10 +94,11 @@ export function CtaBookButton({ className }: { className?: string }) {
     <button
       onClick={() => destination && router.push(destination)}
       disabled={!destination}
-      className={className ?? 'cta-banner__btn'}
+      className={`group ${className ?? 'cta-banner__btn'}`}
       style={!destination ? { opacity: 0.7, cursor: 'default' } : undefined}
     >
-      Find a Mentor <ArrowIcon className="w-4 h-4" />
+      <span className="hidden sm:inline">Talk Before You Choose</span>
+      <span className="sm:hidden">Book Now</span> <ArrowIcon className="ml-1" />
     </button>
   )
 }

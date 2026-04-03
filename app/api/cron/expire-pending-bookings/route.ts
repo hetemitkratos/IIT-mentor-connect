@@ -28,13 +28,24 @@ async function handleCron(req: NextRequest) {
     data: { status: 'cancelled' },
   })
 
-  const totalExpired = expired1.count + expired2.count
+  // Cancel scheduled bookings where the session endTime has passed but OTP was never verified (no-shows)
+  const expired3 = await prisma.booking.updateMany({
+    where: {
+      status: 'scheduled',
+      endTime: { lt: new Date() },
+      otpVerified: false,
+    },
+    data: { status: 'cancelled' },
+  })
+
+  const totalExpired = expired1.count + expired2.count + expired3.count
 
   // Fix #8: Structured log for observability
   if (totalExpired > 0) {
     console.log('[BOOKING_EXPIRED]', {
       paymentPending: expired1.count,
       pendingPayment: expired2.count,
+      unverifiedNoShows: expired3.count,
       cutoff15: fifteenMinutesAgo.toISOString(),
       cutoff30: thirtyMinutesAgo.toISOString(),
     })

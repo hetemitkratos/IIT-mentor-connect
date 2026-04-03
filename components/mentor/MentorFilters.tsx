@@ -142,7 +142,7 @@ export function MentorFilters({ filters, onChange }: MentorFiltersProps) {
           ref={panelRef}
           className="mt-3 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] p-6 z-50"
         >
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
 
             {/* College / IIT */}
             <FilterSelect

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Mentor Profile — IIT Mentor Connect',
+  title: 'Mentor Profile — CandidConversation',
 }
 
 export default async function MentorProfilePage({ params }: { params: Promise<{ mentorId: string }> }) {

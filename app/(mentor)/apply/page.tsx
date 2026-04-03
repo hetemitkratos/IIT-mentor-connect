@@ -79,25 +79,35 @@ function BoltIcon() {
 
 /* ════ CONSTANTS ════════════════════════════════════════════ */
 const IITS = [
-  "IIT Bombay","IIT Delhi","IIT Madras","IIT Kanpur","IIT Kharagpur",
-  "IIT Roorkee","IIT Guwahati","IIT Hyderabad","IIT BHU","IIT Indore",
-  "IIT Jodhpur","IIT Mandi","IIT Patna","IIT Tirupati",
+  "IIT Kharagpur", "IIT Bombay", "IIT Madras", "IIT Kanpur", "IIT Delhi", "IIT Guwahati", "IIT Roorkee", "IIT Bhubaneswar", "IIT Gandhinagar", "IIT Hyderabad", "IIT Jodhpur", "IIT Patna", "IIT Ropar", "IIT Indore", "IIT Mandi", "IIT (BHU) Varanasi", "IIT Palakkad", "IIT Tirupati", "IIT Dhanbad", "IIT Bhilai", "IIT Goa", "IIT Jammu", "IIT Dharwad", "NIT Trichy", "NIT Surathkal", "NIT Warangal", "NIT Calicut", "NIT Rourkela", "VNIT Nagpur", "NIT Durgapur", "NIT Silchar", "NIT Hamirpur", "NIT Jamshedpur", "NIT Kurukshetra", "NIT Allahabad", "NIT Bhopal", "NIT Jaipur", "NIT Raipur", "NIT Agartala", "NIT Srinagar", "NIT Patna", "NIT Delhi", "NIT Goa", "NIT Puducherry", "NIT Arunachal Pradesh", "NIT Sikkim", "NIT Meghalaya", "NIT Mizoram", "NIT Manipur", "NIT Nagaland", "NIT Uttarakhand", "NIT Andhra Pradesh", "NIT Jalandhar"
 ];
+const COURSES = [
+  "Aerospace Engineering", "Agricultural Engineering", "Agricultural and Food Engineering", "Artificial Intelligence", "Artificial Intelligence and Data Science", "Biological Engineering", "Biotechnology", "Ceramic Engineering", "Chemical Engineering", "Chemistry (Engineering Chemistry)", "Civil Engineering", "Computer Science and Engineering", "Data Science and Engineering", "Electrical and Electronics Engineering", "Electrical Engineering", "Electrical Engineering (Power and Automation)", "Electronics and Communication Engineering", "Electronics and Instrumentation Engineering", "Electronics and VLSI Engineering", "Engineering Physics", "Engineering Science", "Environmental Engineering", "Environmental Science and Engineering", "Food Engineering and Technology", "Geological Technology", "Geophysical Technology", "Industrial and Production Engineering", "Industrial Engineering", "Information Technology", "Instrumentation Engineering", "Instrumentation and Control Engineering", "Manufacturing Engineering", "Manufacturing Science and Engineering", "Materials Science and Engineering", "Mathematics and Computing", "Mechanical Engineering", "Metallurgical Engineering", "Metallurgical and Materials Engineering", "Mining Engineering", "Mineral Engineering", "Naval Architecture and Ocean Engineering", "Ocean Engineering", "Petroleum Engineering", "Production Engineering", "Production and Industrial Engineering", "Textile Engineering", "Textile Technology"
+];
+const ACADEMIC_YEARS = ["1st", "2nd", "3rd", "4th", "5th"];
+const STATES = [
+  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi (NCT of Delhi)", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
+];
+const VERNACULAR_LANGUAGES = [
+  "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Hindi", "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri (Meitei)", "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", "Sindhi", "Tamil", "Telugu", "Urdu"
+];
+const JEE_YEARS = Array.from({ length: 12 }, (_, i) => String(new Date().getFullYear() + 1 - i));
 
 /* ════ COMPONENT ════════════════════════════════════════════ */
 export default function BecomeAMentorPage() {
   const { data: session } = useSession();
 
   const [fullName, setFullName] = useState("");
-  const [iit, setIit]           = useState("IIT Bombay");
-  const [branch, setBranch]     = useState("");
-  const [year, setYear]         = useState("");
+  const [iit, setIit]           = useState("IIT Kharagpur");
+  const [branch, setBranch]     = useState("Computer Science and Engineering");
+  const [academicYear, setAcademicYear] = useState("1st");
+  const [jeeYear, setJeeYear]   = useState(JEE_YEARS[0]);
   const [rank, setRank]         = useState("");
-  const [state, setState]       = useState("");
+  const [state, setState]       = useState("Maharashtra");
   const [bio, setBio]           = useState("");
   const [calendly, setCalendly] = useState("");
   const [collegeId, setCollegeId] = useState("");
-  const [langs, setLangs]       = useState("");
+  const [langs, setLangs]       = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted]   = useState(false);
   
@@ -124,6 +134,12 @@ export default function BecomeAMentorPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const toggleLang = (l: string) => {
+    setLangs(prev => 
+      prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l]
+    );
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -137,10 +153,10 @@ export default function BecomeAMentorPage() {
           fullName: fullName.trim(),
           iit: iit.trim(),
           branch: branch.trim(),
-          year: year.trim(),
+          year: `${academicYear} Year, JEE ${jeeYear}`,
           rank: rank.trim(),
           state: state.trim(),
-          languages: langs.trim(),
+          languages: langs.join(", "),
           bio: bio.trim(),
           calendlyLink: calendly.trim(),
           collegeIdUrl: collegeId.trim(),
@@ -166,23 +182,6 @@ export default function BecomeAMentorPage() {
   return (
     <div className="bam-page">
 
-      {/* ── NAVBAR (same as landing) ─────────────────────── */}
-      <header className="navbar" style={{ transform: scrollingDown ? "translateY(-100%)" : "translateY(0)", transition: "transform 0.3s ease", position: "sticky", top: 0, zIndex: 50 }}>
-        <div className="navbar__inner">
-          <Link href="/" className="navbar__logo">MentorJEE</Link>
-          <nav className="navbar__links">
-            <Link href="/mentors"         className="navbar__link">Find Mentors</Link>
-            <Link href="/#how-it-works"   className="navbar__link">How It Works</Link>
-            <Link href="/apply" className="navbar__link navbar__link--active">Become a Mentor</Link>
-          </nav>
-          <Link href="/signin" className="btn-primary">
-            Book a Session
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </Link>
-        </div>
-      </header>
 
       {/* ── APPLICATION FORM ────────────────────────────── */}
       <section className="bam-section bam-form-section">
@@ -196,7 +195,7 @@ export default function BecomeAMentorPage() {
               <div className="bam-success__icon">✓</div>
               <h2 className="bam-success__title">Application Submitted!</h2>
               <p className="bam-success__body">
-                Thanks! We&rsquo;ll verify your IIT credentials and get back to you within 24 hours.
+                Thanks! We&rsquo;ll verify your credentials and get back to you within 24 hours.
               </p>
               <Link href="/" className="bam-submit-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", marginTop: 0 }}>
                 Back to Home
@@ -224,10 +223,10 @@ export default function BecomeAMentorPage() {
                   />
                 </div>
 
-                {/* Row: IIT + Branch */}
+                {/* Row: IIT + Course */}
                 <div className="bam-grid-2">
                   <div className="bam-field">
-                    <label className="bam-label">IIT</label>
+                    <label className="bam-label">College</label>
                     <div className="bam-select-wrap">
                       <select
                         className="bam-select"
@@ -235,35 +234,65 @@ export default function BecomeAMentorPage() {
                         onChange={e => setIit(e.target.value)}
                         required
                       >
-                        {IITS.map(i => <option key={i}>{i}</option>)}
+                        <option value="" disabled>Select College</option>
+                        {IITS.map(i => <option key={i} value={i}>{i}</option>)}
                       </select>
                       <ChevronDown />
                     </div>
                   </div>
                   <div className="bam-field">
-                    <label className="bam-label">Branch</label>
-                    <input
-                      className="bam-input"
-                      placeholder="e.g. CSE"
-                      value={branch}
-                      onChange={e => setBranch(e.target.value)}
-                      required
-                    />
+                    <label className="bam-label">Course</label>
+                    <div className="bam-select-wrap">
+                      <select
+                        className="bam-select"
+                        value={branch}
+                        onChange={e => setBranch(e.target.value)}
+                        required
+                      >
+                        <option value="" disabled>Select Course</option>
+                        {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <ChevronDown />
+                    </div>
                   </div>
                 </div>
 
-                {/* Row: Year + AIR Rank */}
+                {/* Row: Academic Year + JEE Year + AIR Rank */}
                 <div className="bam-grid-2">
                   <div className="bam-field">
-                    <label className="bam-label">Year</label>
-                    <input
-                      className="bam-input"
-                      placeholder="JEE Year"
-                      value={year}
-                      onChange={e => setYear(e.target.value)}
-                      required
-                    />
+                    <label className="bam-label">Academic Year</label>
+                    <div className="bam-select-wrap">
+                      <select
+                        className="bam-select"
+                        value={academicYear}
+                        onChange={e => setAcademicYear(e.target.value)}
+                        required
+                      >
+                        <option value="" disabled>Select Year</option>
+                        {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                      <ChevronDown />
+                    </div>
                   </div>
+                  <div className="bam-field">
+                    <label className="bam-label">JEE Attempt Year</label>
+                    <div className="bam-select-wrap">
+                      <select
+                        className="bam-select"
+                        value={jeeYear}
+                        onChange={e => setJeeYear(e.target.value)}
+                        required
+                      >
+                        <option value="" disabled>Select Year</option>
+                        {JEE_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                      <ChevronDown />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row: AIR Rank + Native State */}
+                <div className="bam-grid-2">
                   <div className="bam-field">
                     <label className="bam-label">AIR Rank</label>
                     <input
@@ -273,30 +302,38 @@ export default function BecomeAMentorPage() {
                       onChange={e => setRank(e.target.value)}
                     />
                   </div>
-                </div>
-
-                {/* Native State */}
-                <div className="bam-field">
-                  <label className="bam-label">Native State</label>
-                  <input
-                    className="bam-input"
-                    placeholder="Your home state"
-                    value={state}
-                    onChange={e => setState(e.target.value)}
-                    required
-                  />
+                  <div className="bam-field">
+                    <label className="bam-label">Native State / UT</label>
+                    <div className="bam-select-wrap">
+                      <select
+                        className="bam-select"
+                        value={state}
+                        onChange={e => setState(e.target.value)}
+                        required
+                      >
+                        <option value="" disabled>Select State / UT</option>
+                        {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <ChevronDown />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Languages */}
                 <div className="bam-field">
-                  <label className="bam-label">Languages</label>
-                  <input
-                    className="bam-input"
-                    placeholder="e.g. English, Hindi, Telugu (comma-separated)"
-                    value={langs}
-                    onChange={e => setLangs(e.target.value)}
-                    required
-                  />
+                  <label className="bam-label">Vernacular Language</label>
+                  <div className="bam-lang-row">
+                    {VERNACULAR_LANGUAGES.map(l => (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => toggleLang(l)}
+                        className={`bam-lang-pill ${langs.includes(l) ? 'bam-lang-pill--active' : ''}`}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Bio */}
@@ -408,45 +445,6 @@ export default function BecomeAMentorPage() {
         </div>
       </section>
 
-      {/* ── FOOTER (same as landing) ─────────────────────── */}
-      <footer className="footer">
-        <div className="footer__inner">
-          <div className="footer__brand">
-            <p className="footer__logo">MentorJEE</p>
-            <p className="footer__tagline">
-              1-on-1 mentorship from IITians.<br />
-              20 minutes of focused, practical guidance to help you crack JEE.
-            </p>
-          </div>
-          <div className="footer__col">
-            <p className="footer__col-title">Platform</p>
-            <ul className="footer__links">
-              <li><Link href="/mentors">Find Mentors</Link></li>
-              <li><Link href="/#how-it-works">How It Works</Link></li>
-              <li><Link href="/pricing">Pricing</Link></li>
-            </ul>
-          </div>
-          <div className="footer__col">
-            <p className="footer__col-title">Company</p>
-            <ul className="footer__links">
-              <li><Link href="/about">About</Link></li>
-              <li><Link href="/blog">Blog</Link></li>
-              <li><Link href="/careers">Careers</Link></li>
-            </ul>
-          </div>
-          <div className="footer__col">
-            <p className="footer__col-title">Legal</p>
-            <ul className="footer__links">
-              <li><Link href="/privacy">Privacy Policy</Link></li>
-              <li><Link href="/terms">Terms of Service</Link></li>
-              <li><Link href="/refunds">Refund Policy</Link></li>
-            </ul>
-          </div>
-        </div>
-        <div className="footer__copy">
-          <p>© 2026 MentorJEE. All rights reserved.</p>
-        </div>
-      </footer>
 
     </div>
   );

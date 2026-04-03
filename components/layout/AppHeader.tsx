@@ -16,14 +16,14 @@ export function AppHeader() {
     <header className="navbar">
       <div className="navbar__inner">
         {/* Logo */}
-        <Link href="/" className="navbar__logo">MentorJEE</Link>
+        <Link href="/" className="navbar__logo">CandidConversation</Link>
 
         {/* Nav links */}
         <nav className="navbar__links">
           <Link href="/mentors" className="navbar__link">Find Mentors</Link>
           <Link href="/#how-it-works" className="navbar__link">How It Works</Link>
           {(!role || role === 'aspirant') && (
-            <Link href="/apply" className="navbar__link">Become a Mentor</Link>
+            <Link href="/become-a-mentor" className="navbar__link">Become a Mentor</Link>
           )}
         </nav>
 

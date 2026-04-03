@@ -6,7 +6,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Mentor Application Status — IIT Mentor Connect',
+  title: 'Mentor Application Status — CandidConversation',
   description: 'Follow your journey to becoming a certified mentor on India\'s most elite peer-to-peer academic platform.',
 }
 

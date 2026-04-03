@@ -13,6 +13,7 @@ interface MentorData {
   bio:          string
   profileImage: string | null
   user:         { name: string | null; image: string | null }
+  bookings?:    { review: string | null; rating: number | null; updatedAt: Date; student: { name: string | null } }[]
 }
 
 interface MentorGridProps {

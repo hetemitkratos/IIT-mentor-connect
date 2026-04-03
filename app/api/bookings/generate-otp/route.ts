@@ -52,10 +52,10 @@ export async function POST(req: NextRequest) {
       return error('Session already verified', 400)
     }
 
-    // Prevent Regeneration Spam (reuse valid OTP if under 10 minutes)
+    // Prevent Regeneration Spam (reuse valid OTP if under 15 minutes)
     if (booking.otp && booking.otpGeneratedAt && !booking.otpVerified) {
       const generatedAt = new Date(booking.otpGeneratedAt)
-      if (now.getTime() - generatedAt.getTime() < 10 * 60 * 1000) {
+      if (now.getTime() - generatedAt.getTime() < 15 * 60 * 1000) {
         return success({ otp: booking.otp })
       }
     }

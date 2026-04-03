@@ -6,7 +6,7 @@ export function PublicFooter() {
       <div className="footer__inner">
         {/* Brand */}
         <div className="footer__brand">
-          <p className="footer__logo">MentorJEE</p>
+          <p className="footer__logo">CandidConversation</p>
           <p className="footer__tagline">
             1-on-1 mentorship from IITians.
             <br />
@@ -44,7 +44,7 @@ export function PublicFooter() {
       </div>
 
       <div className="footer__copy">
-        <p>© 2026 MentorJEE. All rights reserved.</p>
+        <p>© 2026 CandidConversation. All rights reserved.</p>
       </div>
     </footer>
   );

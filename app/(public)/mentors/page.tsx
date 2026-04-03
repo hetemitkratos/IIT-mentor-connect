@@ -69,8 +69,8 @@ export default function MentorsPage() {
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         {/* Header Hero Section */}
-        <div className="pt-16 pb-6 text-center">
-          <h1 className="text-[40px] md:text-[48px] font-extrabold text-[#0f172a] tracking-tight font-['Newsreader'] italic mb-4">
+        <div className="pt-16 pb-6 text-[center] px-2 md:px-0 text-center">
+          <h1 className="text-[32px] md:text-[48px] font-extrabold text-[#0f172a] tracking-tight font-['Newsreader'] italic mb-4">
             Browse verified IIT mentors
           </h1>
           <p className="text-lg md:text-xl text-[#64748b] max-w-3xl mx-auto font-['Inter']">

@@ -84,7 +84,7 @@ function InlineOTP({ booking }: { booking: BookingRow }) {
         setTimeUntilStart(`Available in ${mins}m`)
       }
       if (otpGeneratedAt && !booking.otpVerified) {
-        setIsExpired(now.getTime() - new Date(otpGeneratedAt).getTime() >= 10 * 60 * 1000)
+        setIsExpired(now.getTime() - new Date(otpGeneratedAt).getTime() >= 15 * 60 * 1000)
       } else {
         setIsExpired(false)
       }
@@ -133,7 +133,7 @@ function InlineOTP({ booking }: { booking: BookingRow }) {
         <div className="sd-otp-display">
           <span className="sd-otp-label">Your Session OTP</span>
           <span className="sd-otp-code">{otp}</span>
-          <span className="sd-otp-hint">Share with your mentor · valid 10 min</span>
+          <span className="sd-otp-hint">Share with your mentor · valid 15 min</span>
         </div>
       )}
 

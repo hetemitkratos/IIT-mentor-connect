@@ -229,15 +229,15 @@ export default function LandingPage() {
         {/* Left content */}
         <div className="hero__left">
           <h1 className="hero__headline">
-            Talk to{" "}
-            <span className="hero__headline--accent">IITians.</span>
+            Choose Your Next 4 Years with{" "}
+            <span className="hero__headline--accent">Clarity.</span>
             <br />
-            Get Real JEE Guidance.
+            Not Just Your Rank.
           </h1>
           <p className="hero__sub">
-            1-on-1 mentorship. 20 minutes.
-            <br />
-            Focused, practical advice.
+            Choosing IIT or NIT isn’t just about rank — it’s about the next four years of your life.
+            <br /><br className="hidden sm:block" />
+            Through real conversations with students inside these colleges, we help you make decisions with clarity, not assumptions.
           </p>
 
           <div className="hero__actions">
@@ -266,12 +266,32 @@ export default function LandingPage() {
 
         {/* Right: mentor card grid */}
         <div className="hero__right">
-          <div className="hero__grid">
-            {mentors.map((m) => (
-              <MentorCard key={m.name} {...m} />
-            ))}
+          <div className="hero__marquee-container">
+            {/* Top row - scrolls left */}
+            <div className="hero__marquee-row hero__marquee-row--left">
+              <div className="hero__marquee-track">
+                {mentors.map((m, i) => (
+                  <MentorCard key={`row1-a-${i}`} {...m} />
+                ))}
+                {mentors.map((m, i) => (
+                  <MentorCard key={`row1-b-${i}`} {...m} />
+                ))}
+              </div>
+            </div>
+            {/* Bottom row - scrolls right */}
+            <div className="hero__marquee-row hero__marquee-row--right">
+              <div className="hero__marquee-track">
+                {[...mentors].reverse().map((m, i) => (
+                  <MentorCard key={`row2-a-${i}`} {...m} />
+                ))}
+                {[...mentors].reverse().map((m, i) => (
+                  <MentorCard key={`row2-b-${i}`} {...m} />
+                ))}
+              </div>
+            </div>
           </div>
-          {/* Fade on right edge only */}
+          {/* Fades for smooth vertical edge masking */}
+          <div className="hero__fade hero__fade--left" />
           <div className="hero__fade hero__fade--right" />
         </div>
       </section>
@@ -281,8 +301,8 @@ export default function LandingPage() {
         <div className="ticker__track">
           {[...tickerItems, ...tickerItems].map((item, i) => (
             <span key={i} className="ticker__item">
-              {item}
               <span className="ticker__dot" />
+              {item}
             </span>
           ))}
         </div>
@@ -320,20 +340,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SUCCESS STORIES ────────────────────────────────────── */}
-      <section className="section section--stories">
-        <p className="section__eyebrow">Success Stories</p>
-        <h2 className="section__heading">This is What 20 Minutes Can Do</h2>
-        <p className="section__sub">Hear student testimonials about us</p>
-
-        {/* Fades */}
-        <div className="stories__fade stories__fade--left" />
-        <div className="stories__wrap">
-          {testimonials.map((t) => (
-            <TestimonialCard key={t.name} {...t} />
-          ))}
+      {/* ── STATEMENT STRIP ────────────────────────────────────── */}
+      <section className="section py-24 my-10 bg-white border-y border-[#ddc1af]/30 shadow-[0_4px_40px_rgba(0,0,0,0.02)]">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-[36px] md:text-[52px] font-semibold text-[#000] tracking-tight leading-[1.15] mb-6">
+            Your rank gets you in.<br className="hidden md:block" />
+            <span className="font-['Newsreader'] italic font-medium text-[#f5820a]"> The right conversation gets you ready.</span>
+          </h2>
+          <p className="text-[18px] md:text-[22px] text-[#475569] leading-relaxed max-w-2xl mx-auto">
+            AI can tell you the cutoff. Only a real student can tell you what life there actually feels like.
+          </p>
         </div>
-        <div className="stories__fade stories__fade--right" />
       </section>
 
       {/* ── CTA BANNER ─────────────────────────────────────────── */}

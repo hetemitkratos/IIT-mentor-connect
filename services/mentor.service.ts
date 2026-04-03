@@ -33,7 +33,15 @@ export async function getMentors(filters: MentorFilters, page = 1, limit = 10) {
     prisma.mentor.count({ where }),
     prisma.mentor.findMany({
       where,
-      include: { user: { select: { name: true, image: true } } },
+      include: { 
+        user: { select: { name: true, image: true } },
+        bookings: {
+          select: { review: true, rating: true, updatedAt: true, student: { select: { name: true } } },
+          where: { review: { not: null } },
+          orderBy: { updatedAt: 'desc' },
+          take: 5
+        }
+      },
       orderBy: { createdAt: 'desc' },
       take: limit,
       skip: (page - 1) * limit,

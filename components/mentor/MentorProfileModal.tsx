@@ -20,6 +20,7 @@ interface MentorData {
   calendlyLink?: string
   profileImage: string | null
   user:         { name: string | null; image: string | null }
+  bookings?:    { review: string | null; rating: number | null; updatedAt: Date; student: { name: string | null } }[]
 }
 
 interface MentorProfileModalProps {
@@ -85,7 +86,7 @@ export function MentorProfileModal({ mentor, onClose }: MentorProfileModalProps)
           {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 w-10 h-10 bg-[#e7e8e9] hover:bg-[#d1d5db] transition-colors rounded-full flex items-center justify-center text-[#475569] shadow-sm"
+          className="absolute top-6 right-6 z-10 w-10 h-10 bg-white hover:bg-gray-50 transition-colors rounded-full flex items-center justify-center text-[#564335] shadow-sm border border-[#e2e8f0]/50"
           aria-label="Close profile"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -159,39 +160,44 @@ export function MentorProfileModal({ mentor, onClose }: MentorProfileModalProps)
                 </div>
               </div>
 
-              {/* Reviews Section Mock */}
+              {/* Reviews Section */}
               <div className="flex flex-col gap-6 pt-4">
                 <h2 className="text-[20px] font-bold text-[#191c1d] tracking-tight font-['Epilogue']">Student Reviews</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Review 1 */}
-                  <div className="bg-[#f3f4f5] p-6 rounded-2xl flex flex-col gap-3">
-                    <div className="flex justify-between items-start w-full">
-                      <div className="flex text-[#facc15]"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg></div>
-                      <span className="text-[#564335] text-xs font-medium font-['Manrope']">2 days ago</span>
-                    </div>
-                    <p className="text-[#564335] text-[14px] leading-relaxed font-['Manrope']">
-                      "Helped me restructure my organic chemistry approach in just one session. Very practical advice."
-                    </p>
-                    <p className="text-[#191c1d] text-xs font-bold font-['Manrope'] mt-1">— Rahul S., JEE Aspirant</p>
+                
+                {(!mentor.bookings || mentor.bookings.length === 0) ? (
+                  <div className="bg-[#f3f4f5] p-6 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <p className="text-[#564335] text-[15px] font-['Manrope']">No Reviews yet</p>
                   </div>
-                  {/* Review 2 */}
-                  <div className="bg-[#f3f4f5] p-6 rounded-2xl flex flex-col gap-3">
-                    <div className="flex justify-between items-start w-full">
-                      <div className="flex text-[#facc15]"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg></div>
-                      <span className="text-[#564335] text-xs font-medium font-['Manrope']">1 week ago</span>
-                    </div>
-                    <p className="text-[#564335] text-[14px] leading-relaxed font-['Manrope']">
-                      "Extremely patient and clear. Highly recommend for subject prep strategy."
-                    </p>
-                    <p className="text-[#191c1d] text-xs font-bold font-['Manrope'] mt-1">— Megha K.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {mentor.bookings.map((booking, idx) => (
+                      <div key={idx} className="bg-[#f3f4f5] p-6 rounded-2xl flex flex-col gap-3">
+                        <div className="flex justify-between items-start w-full">
+                          <div className="flex text-[#facc15]">
+                            {[...Array(booking.rating || 5)].map((_, i) => (
+                              <svg key={i} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                            ))}
+                          </div>
+                          <span className="text-[#564335] text-xs font-medium font-['Manrope']">
+                            {new Date(booking.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                        <p className="text-[#564335] text-[14px] leading-relaxed font-['Manrope']">
+                          "{booking.review}"
+                        </p>
+                        <p className="text-[#191c1d] text-xs font-bold font-['Manrope'] mt-1">
+                          — {booking.student.name || 'Anonymous Student'}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
             {/* Right Column: Sticky Booking Card */}
             <div className="w-full lg:w-[320px] shrink-0">
-              <div className="bg-white border border-[#ddc1af]/20 rounded-2xl p-6 shadow-[0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_8px_10px_-6px_rgba(0,0,0,0.1)] sticky top-0 flex flex-col gap-6">
+              <div className="bg-white border border-[#e2e8f0]/50 rounded-[32px] p-6 shadow-sm sticky top-0 flex flex-col gap-6">
                 
                 {/* Profile Avatar / Info */}
                 <div className="flex flex-col items-center">

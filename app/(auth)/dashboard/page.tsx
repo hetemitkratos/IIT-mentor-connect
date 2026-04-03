@@ -6,7 +6,7 @@ import StudentDashboardContent from '@/components/student/StudentDashboardConten
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'My Dashboard — IIT Mentor Connect',
+  title: 'My Dashboard — CandidConversation',
 }
 
 export default async function StudentDashboardPage() {

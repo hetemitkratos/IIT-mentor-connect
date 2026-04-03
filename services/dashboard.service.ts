@@ -66,8 +66,23 @@ export async function getMentorDashboard(mentorId: string) {
   ])
 
   // Segment bookings by status
-  const ongoingBookings   = allBookings.filter(b => b.status === 'in_progress')
-  const upcomingBookings  = allBookings.filter(b => b.status === 'scheduled')
+  const now = Date.now()
+
+  const ongoingBookings = allBookings.filter(b => {
+    if (b.status === 'in_progress') return true
+    if (b.status === 'scheduled' && b.startTime && b.endTime) {
+      // Show as ongoing from 5 mins before start until end time
+      const start = b.startTime.getTime() - 5 * 60 * 1000
+      const end = b.endTime.getTime() // Or maybe add a buffer after end time?
+      if (now >= start && now <= end) return true
+    }
+    return false
+  })
+
+  const upcomingBookings = allBookings.filter(b => 
+    b.status === 'scheduled' && !ongoingBookings.includes(b)
+  )
+
   const completedBookings = allBookings.filter(b => b.status === 'completed')
     .sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0))
   const cancelledBookings = allBookings.filter(b => b.status === 'cancelled')

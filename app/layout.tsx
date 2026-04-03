@@ -22,7 +22,7 @@ const manrope = Manrope({
 })
 
 export const metadata: Metadata = {
-  title: 'MentorJEE — Talk to IITians. Get Real JEE Guidance.',
+  title: 'CandidConversation — Talk to IITians. Get Real JEE Guidance.',
   description:
     '1-on-1 mentorship from IITians. 20 minutes of focused, practical advice to help you crack JEE.',
 }

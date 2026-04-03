@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
 import { verifyCronSecret } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
-import { success, error } from '@/lib/api-response'
+import { success } from '@/lib/api-response'
 
-export async function POST(req: NextRequest) {
+async function handleCron(req: NextRequest) {
   const authError = verifyCronSecret(req)
   if (authError) return authError
 
@@ -16,5 +16,14 @@ export async function POST(req: NextRequest) {
   })
 
   return success({ completed: result.count })
+}
+
+// Vercel Cron sends GET — must export both
+export async function GET(req: NextRequest) {
+  return handleCron(req)
+}
+
+export async function POST(req: NextRequest) {
+  return handleCron(req)
 }
 

@@ -7,7 +7,7 @@ import MentorDashboardContent from '@/components/mentor/MentorDashboardContent'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Mentor Dashboard — IIT Mentor Connect',
+  title: 'Mentor Dashboard — CandidConversation',
 }
 
 export default async function MentorDashboardPage() {
