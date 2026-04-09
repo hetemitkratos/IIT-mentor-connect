@@ -17,13 +17,13 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
   // Fix #4: Idempotency — return existing order if already created for this booking
   const existingPayment = await prisma.payment.findUnique({ where: { bookingId } })
   if (existingPayment) {
-    const calendlyUrl = `${booking.mentor.calendlyLink}?utm_source=${booking.sessionToken}`
+    const calUrl = `${booking.mentor.calLink}?utm_source=${booking.sessionToken}`
     return {
       orderId:    existingPayment.razorpayOrderId,
       amount:     existingPayment.amount,
       currency:   existingPayment.currency,
       key:        process.env.RAZORPAY_KEY_ID!,
-      calendlyUrl,
+      calUrl,
     }
   }
 
@@ -52,14 +52,14 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
     razorpayOrderId: order.id,
   });
 
-  const calendlyUrl = `${booking.mentor.calendlyLink}?utm_source=${booking.sessionToken}`
+  const calUrl = `${booking.mentor.calLink}?utm_source=${booking.sessionToken}`
 
   return {
     orderId:    order.id,
     amount:     SESSION_PRICE_PAISE,
     currency:   'INR',
     key:        process.env.RAZORPAY_KEY_ID!,
-    calendlyUrl,
+    calUrl,
   }
 }
 

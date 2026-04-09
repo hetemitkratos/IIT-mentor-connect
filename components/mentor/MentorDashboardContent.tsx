@@ -20,7 +20,13 @@ export interface BookingRow {
 interface Props {
   mentorName:       string
   mentorIit:        string
-  mentorCalendly:   string | null
+  calLink:          string | null
+  calConnected:     boolean
+  calUsername:      string | null
+  calEventTypeId:   string | null
+  availabilityConfigured: boolean
+  availableSlots:   Record<string, string[]> | null
+  timezone:         string | null
   upcomingBookings: BookingRow[]
   ongoingBookings:  BookingRow[]
   completedBookings: BookingRow[]
@@ -388,13 +394,23 @@ function CompletedRow({ b }: { b: BookingRow }) {
    MAIN DASHBOARD CONTENT (client — owns filter state)
 ───────────────────────────────────────────────────────────────── */
 export default function MentorDashboardContent({
-  mentorName, mentorIit, mentorCalendly,
+  mentorName, mentorIit,
+  calLink, calConnected, calUsername,
+  calEventTypeId, availabilityConfigured,
+  availableSlots: initialSlots, timezone: initialTimezone,
   upcomingBookings, ongoingBookings,
   completedBookings, cancelledBookings,
   stats, bio,
 }: Props) {
+  const router = useRouter()
   const [upcomingFilter, setUpcomingFilter] = useState<'all' | '7days'>('7days')
   const [completedFilter, setCompletedFilter] = useState<'all' | 'recent'>('recent')
+
+  // Availability State
+  const [slots, setSlots] = useState<Record<string, string[]>>(initialSlots || {})
+  const [tz, setTz] = useState(initialTimezone || 'Asia/Kolkata')
+  const [savingAvail, setSavingAvail] = useState(false)
+  const [creatingEvent, setCreatingEvent] = useState(false)
 
   // Filter upcoming
   const filteredUpcoming = upcomingFilter === '7days'
@@ -413,6 +429,66 @@ export default function MentorDashboardContent({
   const earned = stats.earningsRs >= 1000
     ? `₹${(stats.earningsRs / 1000).toFixed(0)}k`
     : `₹${stats.earningsRs}`
+
+  const handleSaveAvailability = async () => {
+    setSavingAvail(true)
+    try {
+      const res = await fetch('/api/mentor/availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ availableSlots: slots, timezone: tz }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      router.refresh()
+    } catch (err) {
+      alert(err)
+    } finally {
+      setSavingAvail(false)
+    }
+  }
+
+  const handleCreateEventType = async () => {
+    setCreatingEvent(true)
+    try {
+      const res = await fetch('/api/mentor/cal/create-event', { method: 'POST' })
+      if (!res.ok) throw new Error(await res.text())
+      router.refresh()
+      alert('Event type created successfully! You are now ready.')
+    } catch (err) {
+      alert(err)
+    } finally {
+      setCreatingEvent(false)
+    }
+  }
+
+  const toggleDay = (d: string) => {
+    setSlots(prev => {
+      const next = { ...prev }
+      if (next[d]) delete next[d]
+      else next[d] = []
+      return next
+    })
+  }
+
+  const toggleSlot = (d: string, time: string) => {
+    setSlots(prev => {
+      const next = { ...prev }
+      if (!next[d]) next[d] = []
+      if (next[d].includes(time)) {
+        next[d] = next[d].filter((t: string) => t !== time)
+      } else {
+        next[d] = [...next[d], time].sort()
+      }
+      return next
+    })
+  }
+
+  const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const AVAILABLE_TIME_BLOCKS = [
+    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
+    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+    "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30"
+  ]
 
   return (
     <div className="min-h-screen bg-[#f9f9f9]">
@@ -439,31 +515,138 @@ export default function MentorDashboardContent({
           <StatCard label="Rating" value={stats.rating ? stats.rating.toFixed(1) : '—'} sub="avg. from students" />
         </div>
 
-        {/* ── Calendly Notice ─────────────────────────────────────── */}
-        <div className="bg-[#fff7ed] border border-[rgba(245,130,10,0.1)] rounded-xl flex items-center justify-between px-5 py-4 mb-10">
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2 text-[#d96e08] text-[13px] font-medium">
-              <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              Session management happens on Calendly
+        {/* ── Cal.com Scheduling Settings ──────────────────────────── */}
+        <div className="bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-6 mb-10">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#585f6c]">Scheduling Settings</h2>
+                <p className="text-[#6b7280] text-[13px] leading-relaxed max-w-sm mt-0.5">
+                  Connect your Cal.com account to manage session availability and let students book directly.
+                </p>
+
+                {/* Status List */}
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${calConnected ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`} />
+                    <span className={`text-[12px] font-medium ${calConnected ? 'text-[#16a34a]' : 'text-[#9ca3af]'}`}>
+                      {calConnected ? calUsername ? `Connected as @${calUsername}` : 'Cal.com Connected' : 'Cal.com Not Connected'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${availabilityConfigured ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`} />
+                    <span className={`text-[12px] font-medium ${availabilityConfigured ? 'text-[#16a34a]' : 'text-[#9ca3af]'}`}>
+                      {availabilityConfigured ? 'Availability Configured' : 'Availability Not Configured'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${calEventTypeId ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`} />
+                    <span className={`text-[12px] font-medium ${calEventTypeId ? 'text-[#16a34a]' : 'text-[#9ca3af]'}`}>
+                      {calEventTypeId ? 'Event Type Created' : 'No Event Type'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+                {calConnected ? (
+                  <>
+                    {calLink && (
+                      <a
+                        href={calLink.startsWith('http') ? calLink : `https://cal.com/${calUsername ?? ''}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-5 py-2 text-[13px] font-medium text-[#d96e08] border border-[rgba(245,130,10,0.3)] rounded-full hover:bg-[#fff7ed] transition-colors"
+                      >
+                        Open Cal.com →
+                      </a>
+                    )}
+                    <a
+                      href="/api/auth/cal/connect"
+                      className="text-[11px] text-[#9ca3af] hover:text-[#585f6c] transition-colors underline"
+                    >
+                      Reconnect
+                    </a>
+                  </>
+                ) : (
+                  <a
+                    href="/api/auth/cal/connect"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#191c1d] text-white text-[13px] font-semibold rounded-full hover:bg-black transition-colors shadow-sm"
+                  >
+                    Connect Cal.com
+                  </a>
+                )}
+              </div>
             </div>
-            <p className="text-[#6b7280] text-[12px] pl-5">
-              Your availability and session durations are controlled directly from your Calendly dashboard.
-            </p>
+
+            {calConnected && (
+              <div className="pt-6 border-t border-[rgba(221,193,175,0.2)]">
+                <h3 className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#585f6c] mb-4">Availability Settings</h3>
+                
+                <div className="flex flex-col gap-4 max-w-2xl">
+                  {/* Days */}
+                  <div>
+                    <label className="block text-[12px] font-medium text-[#585f6c] mb-2">Available Days</label>
+                    <div className="flex flex-wrap gap-2">
+                      {DAY_LABELS.map(d => (
+                        <button
+                          key={d}
+                          onClick={() => toggleDay(d)}
+                          className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors border ${slots[d] ? 'bg-[#f5820a] text-white border-[#f5820a]' : 'bg-transparent text-[#585f6c] border-[rgba(221,193,175,0.4)] hover:bg-[#fff7ed] hover:border-[#f5820a]'}`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Slots per selected day */}
+                  {DAY_LABELS.map(d => {
+                    if (!slots[d]) return null
+                    return (
+                      <div key={`slots-${d}`} className="mt-2 p-4 border border-[rgba(221,193,175,0.2)] rounded-2xl bg-[#fafafa]">
+                        <label className="block text-[12px] font-medium text-[#585f6c] mb-3"><span className="text-[#f5820a]">{d}</span> &mdash; Select specific 30-min slots</label>
+                        <div className="flex flex-wrap gap-2">
+                          {AVAILABLE_TIME_BLOCKS.map(time => {
+                            const isSelected = slots[d].includes(time)
+                            return (
+                              <button
+                                key={`${d}-${time}`}
+                                onClick={() => toggleSlot(d, time)}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors border ${isSelected ? 'bg-[#191c1d] text-white border-[#191c1d]' : 'bg-white text-[#585f6c] border-[rgba(221,193,175,0.4)] hover:border-[#9ca3af]'}`}
+                              >
+                                {time}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Timezone */}
+                  <div className="mt-2 w-full sm:w-1/3">
+                    <label className="block text-[12px] font-medium text-[#585f6c] mb-2">Timezone</label>
+                    <select value={tz} onChange={e => setTz(e.target.value)} className="w-full px-3 py-2 text-sm border border-[rgba(221,193,175,0.4)] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#f5820a]/30">
+                      <option value="Asia/Kolkata">Asia/Kolkata</option>
+                      <option value="UTC">UTC</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-2">
+                    <button onClick={handleSaveAvailability} disabled={savingAvail} className="px-5 py-2 bg-[#f5820a] text-white text-[13px] font-semibold rounded-full hover:bg-[#e07509] transition-colors shadow-sm disabled:opacity-70">
+                      {savingAvail ? 'Saving...' : 'Save Availability'}
+                    </button>
+                    {availabilityConfigured && !calEventTypeId && (
+                      <button onClick={handleCreateEventType} disabled={creatingEvent} className="px-5 py-2 bg-[#191c1d] text-white text-[13px] font-semibold rounded-full hover:bg-black transition-colors shadow-sm disabled:opacity-70">
+                        {creatingEvent ? 'Creating...' : 'Create Event on Cal.com'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          {mentorCalendly ? (
-            <a
-              href={mentorCalendly}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#d96e08] text-[13px] font-semibold shrink-0 hover:underline"
-            >
-              Open Calendly →
-            </a>
-          ) : (
-            <span className="text-[#9ca3af] text-[13px]">No Calendly link set</span>
-          )}
         </div>
 
         {/* ── ONGOING SESSIONS ────────────────────────────────────── */}
@@ -570,7 +753,7 @@ export default function MentorDashboardContent({
                     href="/mentor/profile"
                     className="border border-[#ddc1af] text-[#1a1c1c] text-[13px] font-medium px-5 py-2 rounded-full hover:bg-white transition-colors"
                   >
-                    Update Calendly link
+                   Update Cal.com link
                   </a>
                   <a
                     href="/mentors"

@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return error(parsed.error.issues[0].message, 400)
 
   try {
-    console.log('[BOOKING_INPUT]', { studentId: user!.id, mentorId: parsed.data.mentorId })
-    const booking = await createBooking(user!.id, parsed.data.mentorId)
+    console.log('[BOOKING_INPUT]', { studentId: user!.id, mentorId: parsed.data.mentorId, selectedDay: parsed.data.selectedDay, selectedSlot: parsed.data.selectedSlot })
+    const booking = await createBooking(user!.id, parsed.data.mentorId, parsed.data.selectedDay, parsed.data.selectedSlot)
     return success({ bookingId: booking.id, sessionToken: booking.sessionToken, paymentRequired: true }, 201)
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'DUPLICATE_BOOKING')

@@ -51,10 +51,11 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
   const [step, setStep]               = useState<FlowStep>('idle')
   const [flowError, setFlowError]     = useState<FlowError | null>(null)
   const [calendlyUrl, setCalendlyUrl] = useState<string>('')
+  const [finalCalendlyUrl, setFinalCalendlyUrl] = useState<string | null>(null)
   const [savedBookingId, setSavedBookingId] = useState<string | null>(null)
   const [sessionToken, setSessionToken]     = useState<string | null>(null)
 
-  const isProcessing = step === 'creating_booking' || step === 'creating_order' || step === 'razorpay_open' || step === 'verifying' || step === 'redirecting'
+  const isProcessing = step === 'creating_booking' || step === 'creating_order' || step === 'razorpay_open' || step === 'verifying'
 
   const handleError = useCallback((message: string, code?: string) => {
     setStep('error')
@@ -98,19 +99,19 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
       }
 
       if (!PAYMENT_ENABLED) {
+        if (!calendlyLink) {
+          setStep('booked')
+          router.push('/dashboard')
+          return
+        }
+        const separator = calendlyLink.includes('?') ? '&' : '?'
+        const studentName = session?.user?.name
+        const studentEmail = session?.user?.email
+        const nameParam = studentName ? `&name=${encodeURIComponent(studentName)}` : ''
+        const emailParam = studentEmail ? `&email=${encodeURIComponent(studentEmail)}` : ''
+        const url = `${calendlyLink}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`
+        setFinalCalendlyUrl(url)
         setStep('booked')
-        setTimeout(() => {
-          if (!calendlyLink) {
-            router.push('/dashboard')
-            return
-          }
-          const separator = calendlyLink.includes('?') ? '&' : '?'
-          const studentName = session?.user?.name
-          const studentEmail = session?.user?.email
-          const nameParam = studentName ? `&name=${encodeURIComponent(studentName)}` : ''
-          const emailParam = studentEmail ? `&email=${encodeURIComponent(studentEmail)}` : ''
-          window.location.href = `${calendlyLink}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`
-        }, 1500)
         return
       }
 
@@ -162,7 +163,7 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
             const studentEmail = session?.user?.email
             const nameParam = studentName ? `&name=${encodeURIComponent(studentName)}` : ''
             const emailParam = studentEmail ? `&email=${encodeURIComponent(studentEmail)}` : ''
-            window.location.href = `${cUrl}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`
+            setFinalCalendlyUrl(`${cUrl}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`)
             resolve()
           },
           modal: {
@@ -188,6 +189,7 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
     flowError,
     setFlowError,
     isProcessing,
-    startBookingFlow
+    startBookingFlow,
+    finalCalendlyUrl
   }
 }

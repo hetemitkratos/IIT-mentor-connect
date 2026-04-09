@@ -62,7 +62,7 @@ model MentorApplication {
   state           String            @default("")
   languages       String[]
   bio             String
-  calendlyLink    String            @map("calendly_link")
+  calLink         String            @map("calendly_link")
   collegeIdUrl    String            @map("college_id_url")
   status          ApplicationStatus @default(pending)
   rejectionReason String?           @map("rejection_reason")
@@ -83,12 +83,26 @@ model Mentor {
   state        String    @default("")
   languages    String[]
   bio          String
-  calendlyLink String    @map("calendly_link")
-  profileImage String?   @map("profile_image_url")
-  isActive     Boolean   @default(true) @map("is_active")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  bookings     Booking[]
-  user         User      @relation(fields: [userId], references: [id])
+  calLink         String    @map("calendly_link")
+  calAccessToken  String?   @map("cal_access_token")
+  calRefreshToken String?   @map("cal_refresh_token")
+  calUsername     String?   @map("cal_username")
+  calConnected    Boolean   @default(false) @map("cal_connected")
+  profileImage    String?   @map("profile_image_url")
+  isActive        Boolean   @default(true) @map("is_active")
+
+  // Phase 2 Availability Fields
+  availableSlots         Json?     @map("available_slots")
+  timezone               String?   @default("Asia/Kolkata")
+  availabilityConfigured Boolean   @default(false) @map("availability_configured")
+  calEventTypeId         String?   @map("cal_event_type_id")
+
+  // Phase 3 Public Slug
+  slug                    String?   @unique @default(uuid())
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  bookings        Booking[]
+  user            User      @relation(fields: [userId], references: [id])
 
   @@index([iit])
   @@index([branch])
@@ -101,13 +115,18 @@ model Booking {
   mentorId        String        @map("mentor_id")
   studentId       String        @map("student_id")
   sessionToken    String        @unique @default(uuid()) @map("session_token")
-  calendlyEventId String?       @map("calendly_event_id")
+  calEventId      String?       @map("calendly_event_id")
   meetingLink     String?       @map("meeting_link")
   startTime       DateTime?     @map("start_time")
   endTime         DateTime?     @map("end_time")
   status          BookingStatus @default(payment_pending)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
+  
+  // Phase 3 Slot Booking Details
+  selectedDay      String?   @map("selected_day")
+  selectedSlot     String?   @map("selected_slot")
+  paymentExpiresAt DateTime? @map("payment_expires_at")
   otp             String?
   otpGeneratedAt  DateTime?     @map("otp_generated_at")
   otpVerified     Boolean       @default(false) @map("otp_verified")

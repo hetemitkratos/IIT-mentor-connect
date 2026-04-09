@@ -1,35 +1,54 @@
-# Dependencies
+# ── Dependencies ────────────────────────────────────────────────────
 node_modules/
 
-# Next.js
+# ── Next.js ─────────────────────────────────────────────────────────
 .next/
 out/
 
-# Environment — NEVER commit these
+# ── Environment — NEVER commit these ────────────────────────────────
 .env
 .env.local
+.env.development
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
 
-# Prisma
+# ── Prisma ──────────────────────────────────────────────────────────
 prisma/migrations/
+prisma/config.ts
 
-# Debug
+# ── Log files ───────────────────────────────────────────────────────
+*.log
+logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
 
-# OS
+# ── Debug / Scratch scripts ──────────────────────────────────────────
+scripts/
+
+# ── Build artifacts ──────────────────────────────────────────────────
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# ── OS ──────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Documentation — exclude all markdown files except README.md
+# ── Editor ──────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Vercel / Turbo ───────────────────────────────────────────────────
+.vercel/
+.turbo/
+
+# ── Documentation — exclude markdown except README ──────────────────
 *.md
 !README.md
-
-# Misc
-.turbo/
-.vercel/
-prisma/config.ts
-tsconfig.tsbuildinfo

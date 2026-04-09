@@ -10,7 +10,7 @@ export interface Booking {
   mentorId: string
   studentId: string
   sessionToken: string
-  calendlyEventId: string | null
+  calEventId: string | null
   meetingLink: string | null
   startTime: string | null
   endTime: string | null

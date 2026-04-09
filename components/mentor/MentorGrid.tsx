@@ -1,8 +1,7 @@
-import { useState } from 'react'
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
+import { motion, LayoutGroup } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { MentorCard } from './MentorCard'
 import { MentorCardSkeleton } from './MentorCardSkeleton'
-import { MentorProfileModal } from './MentorProfileModal'
 
 interface MentorData {
   id:           string
@@ -30,7 +29,7 @@ export function MentorGrid({
   isError,
   skeletonCount = 9,
 }: MentorGridProps) {
-  const [selectedMentor, setSelectedMentor] = useState<MentorData | null>(null)
+  const router = useRouter()
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (isLoading) {
@@ -75,19 +74,13 @@ export function MentorGrid({
           <MentorCard 
             key={mentor.id} 
             mentor={mentor} 
-            onSelect={() => setSelectedMentor(mentor)} 
+            onSelect={() => {
+              // fallback to mentor.id if slug is somehow missing for old docs
+              router.push(`/mentors/${(mentor as any).slug || mentor.id}`)
+            }} 
           />
         ))}
       </div>
-
-      <AnimatePresence>
-        {selectedMentor && (
-          <MentorProfileModal 
-            mentor={selectedMentor} 
-            onClose={() => setSelectedMentor(null)} 
-          />
-        )}
-      </AnimatePresence>
     </LayoutGroup>
   )
 }

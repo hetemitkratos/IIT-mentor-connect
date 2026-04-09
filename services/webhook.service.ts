@@ -140,16 +140,16 @@ export async function handleCalendlyWebhook(payload: any) {
   const startTime = event.start_time;
   const endTime = event.end_time;
   const meetingLink = event.location?.join_url || null;
-  const calendlyEventId = event.uri ? event.uri.split('/').pop() : null;
+  const calEventId = event.uri ? event.uri.split('/').pop() : null;
 
-  // Step 9 — Handle Idempotency
-  if (booking.status === "awaiting_payment" || booking.status === "scheduled") {
-    console.log("Webhook already processed");
-    return { duplicate: true };
+  // Step 9 — Handle Idempotency: only skip if already fully scheduled
+  if (booking.status === 'scheduled' || booking.status === 'cancelled') {
+    console.log('[CALENDLY_WEBHOOK] Already processed, status:', booking.status)
+    return { duplicate: true }
   }
 
-  // Fix #4: Log out-of-order or invalid-state webhook for observability
-  const validPreSchedulingStatuses = ['payment_pending']
+  // Accept both initial states: payment_pending (with Razorpay) and awaiting_payment (payment-free flow)
+  const validPreSchedulingStatuses = ['payment_pending', 'awaiting_payment']
   if (!validPreSchedulingStatuses.includes(booking.status)) {
     console.warn('[CALENDLY_WEBHOOK_IGNORED] Invalid booking status', {
       bookingId:      booking.id,
@@ -161,18 +161,20 @@ export async function handleCalendlyWebhook(payload: any) {
   }
 
   try {
-    // Step 8 — Update Booking
+    // Step 8 — Update Booking with schedule details
+    // Keep awaiting_payment if payment not yet done; bump to scheduled if Razorpay flow already completed
+    const nextStatus = booking.status === 'payment_pending' ? 'awaiting_payment' : 'scheduled'
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
         startTime: new Date(startTime),
         endTime: new Date(endTime),
         meetingLink,
-        calendlyEventId,
-        status: "awaiting_payment"
+        calEventId,
+        status: nextStatus,
       }
-    });
-    console.log("Booking successfully updated with Webhook event details:", booking.id);
+    })
+    console.log(`[CALENDLY_WEBHOOK] Booking ${booking.id} updated → status: ${nextStatus}`)
   } catch (err) {
     console.error("Failed to update booking in webhook:", err);
     throw err;

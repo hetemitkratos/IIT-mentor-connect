@@ -29,7 +29,7 @@ export async function submitApplication(
       state: data.state,
       languages: data.languages.split(',').map(s => s.trim()).filter(Boolean),
       bio: data.bio,
-      calendlyLink: data.calendlyLink,
+      calLink: data.calLink,
       collegeIdUrl: fileUrl 
     },
   })

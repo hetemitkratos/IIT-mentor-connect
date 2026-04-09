@@ -105,7 +105,7 @@ export default function BecomeAMentorPage() {
   const [rank, setRank]         = useState("");
   const [state, setState]       = useState("Maharashtra");
   const [bio, setBio]           = useState("");
-  const [calendly, setCalendly] = useState("");
+  const [calUrl, setCalUrl] = useState("");
   const [collegeId, setCollegeId] = useState("");
   const [langs, setLangs]       = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -158,7 +158,7 @@ export default function BecomeAMentorPage() {
           state: state.trim(),
           languages: langs.join(", "),
           bio: bio.trim(),
-          calendlyLink: calendly.trim(),
+          calLink: calUrl.trim(),
           collegeIdUrl: collegeId.trim(),
         }),
       });
@@ -349,14 +349,14 @@ export default function BecomeAMentorPage() {
                   />
                 </div>
 
-                {/* Calendly Link */}
+                {/* Cal.com Link */}
                 <div className="bam-field">
-                  <label className="bam-label">Calendly Link</label>
+                  <label className="bam-label">Cal.com Link</label>
                   <input
                     className="bam-input"
-                    placeholder="calendly.com/your-profile"
-                    value={calendly}
-                    onChange={e => setCalendly(e.target.value)}
+                    placeholder="cal.com/your-username/session"
+                    value={calUrl}
+                    onChange={e => setCalUrl(e.target.value)}
                     required
                   />
                 </div>

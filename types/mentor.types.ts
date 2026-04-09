@@ -9,7 +9,7 @@ export interface Mentor {
   year: number
   languages: string[]
   bio: string
-  calendlyLink: string
+  calLink: string
   profileImage: string | null
   isActive: boolean
 }
@@ -24,7 +24,7 @@ export interface MentorApplication {
   year: number
   languages: string[]
   bio: string
-  calendlyLink: string
+  calLink: string
   collegeIdUrl: string
   status: ApplicationStatus
   submittedAt: string

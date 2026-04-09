@@ -1,12 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
-
-/**
- * PAYMENT_ENABLED = false → stops after booking creation, shows confirmation.
- * Flip to true when Razorpay credentials are configured.
- */
 import { useBookingFlow, FlowStep, FlowError } from '@/hooks/useBookingFlow'
 
 interface BookingFlowProps {
@@ -17,21 +11,24 @@ interface BookingFlowProps {
   studentEmail?: string | null
 }
 
-export function BookingFlow({ mentorId, mentorName, calendlyLink, studentName, studentEmail }: BookingFlowProps) {
+export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowProps) {
+  const router = useRouter()
+
   const {
     step,
     setStep,
     flowError,
     setFlowError,
     isProcessing,
-    startBookingFlow
+    startBookingFlow,
+    finalCalendlyUrl,
   } = useBookingFlow({ mentorId, mentorName, calendlyLink })
 
   // ── Step label ─────────────────────────────────────────────────────────────
   const stepLabel: Record<FlowStep, string> = {
     idle:             'Book a Session — ₹150',
     creating_booking: 'Creating booking…',
-    booked:           'Redirecting to schedule…',
+    booked:           'Booking confirmed!',
     creating_order:   'Preparing payment…',
     razorpay_open:    'Complete payment in Razorpay…',
     verifying:        'Verifying payment…',
@@ -39,17 +36,60 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink, studentName, s
     error:            'Book a Session — ₹150',
   }
 
+  // ── Confirmed: show schedule prompt ────────────────────────────────────────
+  if (step === 'booked' && finalCalendlyUrl) {
+    return (
+      <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+        <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+          ✅ Booking confirmed!
+        </p>
+        <p style={{ color: '#6b7280', marginBottom: '1.25rem', fontSize: '0.9rem' }}>
+          Click below to pick your time slot on Calendly.
+        </p>
+
+        {/* Navigate in same tab — guaranteed to work, same as original */}
+        <button
+          type="button"
+          onClick={() => window.location.assign(finalCalendlyUrl)}
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: '0.75rem 1.5rem',
+            background: 'var(--color-primary, #6366f1)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '10px',
+            fontSize: '1rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            marginBottom: '0.75rem',
+          }}
+        >
+          📅 Open Calendly to Schedule
+        </button>
+
+        <button
+          type="button"
+          onClick={() => router.push('/dashboard')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#9ca3af',
+            cursor: 'pointer',
+            fontSize: '0.85rem',
+            textDecoration: 'underline',
+            padding: 0,
+          }}
+        >
+          Skip for now → Dashboard
+        </button>
+      </div>
+    )
+  }
+
+  // ── Normal booking UI ─────────────────────────────────────────────────────
   return (
     <div className="booking-flow">
-
-      {/* ── Bypass success state ─────────────────────────────────────────── */}
-      {step === 'booked' && (
-        <div className="booking-flow__success" role="status">
-          <p className="booking-flow__success-msg">
-            ✅ Booking created! Redirecting to schedule your session…
-          </p>
-        </div>
-      )}
 
       {/* ── Error banner ─────────────────────────────────────────────────── */}
       {step === 'error' && flowError && (
@@ -65,34 +105,25 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink, studentName, s
         </div>
       )}
 
-      {/* ── Book / processing button (hidden on success) ──────────────────── */}
-      {step !== 'booked' && (
-        <button
-          type="button"
-          onClick={startBookingFlow}
-          disabled={isProcessing}
-          className="booking-flow__btn"
-          aria-busy={isProcessing}
-          aria-label={isProcessing ? stepLabel[step] : 'Book a session for ₹150'}
-        >
-          {isProcessing && (
-            <span className="booking-flow__spinner" aria-hidden="true" />
-          )}
-          {stepLabel[step]}
-        </button>
-      )}
+      {/* ── Book / processing button ──────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={startBookingFlow}
+        disabled={isProcessing}
+        className="booking-flow__btn"
+        aria-busy={isProcessing}
+        aria-label={isProcessing ? stepLabel[step] : 'Book a session for ₹150'}
+      >
+        {isProcessing && (
+          <span className="booking-flow__spinner" aria-hidden="true" />
+        )}
+        {stepLabel[step]}
+      </button>
 
       {/* ── Progress hint ────────────────────────────────────────────────── */}
       {isProcessing && (
         <p className="booking-flow__hint">
           Do not close this tab while processing.
-        </p>
-      )}
-
-      {/* ── Calendly redirect state ───────────────────────────────────────── */}
-      {step === 'redirecting' && (
-        <p className="booking-flow__hint">
-          ✅ Payment confirmed! Redirecting to Calendly to pick your time slot…
         </p>
       )}
     </div>

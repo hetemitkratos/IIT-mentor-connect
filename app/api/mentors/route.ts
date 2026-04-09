@@ -10,7 +10,7 @@ const createMentorSchema = z.object({
   year:         z.number().int().min(1).max(5),
   languages:    z.array(z.string()).min(1, 'At least one language required'),
   bio:          z.string().min(50, 'Bio must be at least 50 characters'),
-  calendlyLink: z.string().url('Must be a valid Calendly URL'),
+  calLink:      z.string().url('Must be a valid Cal.com or meeting link'),
   profileImage: z.string().url().optional(),
 })
 

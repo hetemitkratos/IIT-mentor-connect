@@ -9,7 +9,7 @@ interface Application {
   year: number
   languages: string[]
   bio: string
-  calendlyLink: string
+  calLink: string
   collegeIdUrl: string
   status: string
   createdAt: string
@@ -190,12 +190,12 @@ export default function AdminApplicationsPage() {
                 {/* Links */}
                 <div className="flex gap-4 text-sm mb-4">
                   <a
-                    href={app.calendlyLink}
+                    href={app.calLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline"
                   >
-                    Calendly ↗
+                    Cal.com ↗
                   </a>
                   <a
                     href={app.collegeIdUrl}

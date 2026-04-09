@@ -1,6 +1,11 @@
 import { prisma } from '@/lib/prisma'
 
-export async function createBooking(studentId: string, mentorId: string) {
+export async function createBooking(
+  studentId: string,
+  mentorId: string,
+  selectedDay: string,
+  selectedSlot: string
+) {
   return prisma.$transaction(async (tx) => {
     // Integrity checks
     const mentor = await tx.mentor.findUnique({ where: { id: mentorId } })
@@ -8,7 +13,25 @@ export async function createBooking(studentId: string, mentorId: string) {
     if (mentor.userId === studentId) throw new Error('INVALID_BOOKING')
     if (!mentor.isActive) throw new Error('MENTOR_INACTIVE')
 
-    // Atomically check + create — eliminates race condition between two parallel requests
+    // Validate the selected slot is available 
+    const availableSlots = (mentor.availableSlots ?? {}) as Record<string, string[]>
+    const daySlots = availableSlots[selectedDay]
+    if (!daySlots || !daySlots.includes(selectedSlot)) {
+      throw new Error('INVALID_SLOT')
+    }
+
+    // Double-booking prevention
+    const slotConflict = await tx.booking.findFirst({
+      where: {
+        mentorId,
+        selectedDay,
+        selectedSlot,
+        status: { in: ['payment_pending', 'awaiting_payment', 'payment_complete', 'scheduled', 'in_progress'] },
+      },
+    })
+    if (slotConflict) throw new Error('SLOT_ALREADY_BOOKED')
+
+    // Student specific anti-spam check
     const existing = await tx.booking.findFirst({
       where: {
         studentId,
@@ -18,11 +41,19 @@ export async function createBooking(studentId: string, mentorId: string) {
     })
     if (existing) throw new Error('DUPLICATE_BOOKING')
 
-    // Insert — DB partial unique index provides a second layer of defence
+    const paymentExpiresAt = new Date(Date.now() + 30 * 60 * 1000)
+
     const booking = await tx.booking.create({
-      data: { studentId, mentorId },
+      data: { 
+        studentId, 
+        mentorId,
+        selectedDay,
+        selectedSlot,
+        status: 'payment_pending',
+        paymentExpiresAt
+      },
     })
-    console.log('[BOOKING_CREATED]', { bookingId: booking.id, studentId, mentorId })
+    console.log('[BOOKING_CREATED]', { bookingId: booking.id, studentId, mentorId, selectedDay, selectedSlot })
     return booking
   })
 }

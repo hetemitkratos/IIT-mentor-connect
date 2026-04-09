@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 export const createBookingSchema = z.object({
   mentorId: z.string().uuid('Invalid mentor ID'),
+  selectedDay: z.string().min(1, 'Selected day is required'),
+  selectedSlot: z.string().min(1, 'Selected slot is required'),
 })
 
 export const cancelBookingSchema = z.object({
