@@ -1,12 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/complete-bookings",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/expire-pending-bookings",
-      "schedule": "*/30 * * * *"
+      "path": "/api/cron/cleanup-bookings",
+      "schedule": "0 0 * * *"
     }
   ]
 }

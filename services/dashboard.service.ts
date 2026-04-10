@@ -1,12 +1,14 @@
 import { prisma } from '@/lib/prisma'
 import { MENTOR_PAYOUT_RS } from '@/constants/pricing'
+import { expireBookingsIfNeeded } from './booking.service'
+import { Booking } from '@prisma/client'
 
 // Statuses that represent an active/upcoming session
 // Student sees: scheduled (confirmed) + awaiting_payment (Calendly done, needs payment) + payment_pending (just created)
 // Mentor sees: only scheduled (via getMentorDashboard overriding this default)
 const UPCOMING_STATUSES = ['scheduled', 'in_progress', 'awaiting_payment', 'payment_pending'] as const
 // Statuses that represent a concluded session
-const PAST_STATUSES = ['completed', 'cancelled'] as const
+const PAST_STATUSES = ['completed', 'cancelled', 'expired'] as const
 
 export async function getStudentDashboard(studentId: string) {
   // Single parallel batch — zero extra round-trips
@@ -43,13 +45,24 @@ export async function getStudentDashboard(studentId: string) {
     prisma.booking.count({ where: { studentId, status: 'completed' } }),
   ])
 
+  // Run the expiration side-effect
+  await expireBookingsIfNeeded([...upcomingBookings, ...pastBookings] as unknown as Booking[])
+
+  // Move any freshly expired bookings out of upcoming and into past
+  const validUpcoming = upcomingBookings.filter(b => b.status !== 'expired')
+  const newlyExpired  = upcomingBookings.filter(b => b.status === 'expired')
+  
+  const finalPast = [...newlyExpired, ...pastBookings].sort(
+    (a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0)
+  ).slice(0, 5)
+
   return {
-    upcomingBookings,
-    pastBookings,
+    upcomingBookings: validUpcoming,
+    pastBookings: finalPast,
     stats: {
       totalBookings:      totalCount,
       completedSessions:  completedCount,
-      upcomingSessions:   upcomingBookings.length,
+      upcomingSessions:   validUpcoming.length,
     },
   }
 }
@@ -64,6 +77,8 @@ export async function getMentorDashboard(mentorId: string) {
     prisma.booking.count({ where: { mentorId, status: 'completed' } }),
     prisma.booking.count({ where: { mentorId } }),
   ])
+
+  await expireBookingsIfNeeded(allBookings as unknown as Booking[])
 
   // Segment bookings by status
   const now = Date.now()
@@ -87,6 +102,8 @@ export async function getMentorDashboard(mentorId: string) {
     .sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0))
   const cancelledBookings = allBookings.filter(b => b.status === 'cancelled')
     .sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0))
+  const expiredBookings = allBookings.filter(b => b.status === 'expired')
+    .sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0))
 
   // Average rating from rated completed bookings
   const ratedBookings = completedBookings.filter(b => b.rating != null)
@@ -99,8 +116,9 @@ export async function getMentorDashboard(mentorId: string) {
     ongoingBookings,
     completedBookings,
     cancelledBookings,
+    expiredBookings,
     // Legacy field for backward compat
-    pastBookings: [...completedBookings, ...cancelledBookings],
+    pastBookings: [...completedBookings, ...cancelledBookings, ...expiredBookings],
     stats: {
       totalSessions:     totalCount,
       completedSessions: completedCount,

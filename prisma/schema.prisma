@@ -190,6 +190,7 @@ enum BookingStatus {
   in_progress
   completed
   cancelled
+  expired
 }
 
 enum PaymentStatus {

@@ -12,7 +12,7 @@ export async function GET() {
   const count = await prisma.booking.count({
     where: {
       studentId: session.user.id,
-      status: { notIn: ['cancelled'] },
+      status: { notIn: ['cancelled', 'expired'] },
     },
   })
 

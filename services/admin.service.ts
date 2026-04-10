@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { expireBookingsIfNeeded } from './booking.service'
+import { Booking } from '@prisma/client'
 
 export async function getApplications(status = 'pending', page = 1, limit = 20) {
   const where = { status: status as never }
@@ -69,6 +71,9 @@ export async function getAllBookings(status?: string, page = 1, limit = 20) {
       skip: (page - 1) * limit,
     }),
   ])
+  
+  await expireBookingsIfNeeded(bookings as unknown as Booking[])
+  
   return { bookings, total, page }
 }
 

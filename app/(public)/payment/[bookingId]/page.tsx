@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import CompletePaymentButton from '@/components/booking/CompletePaymentButton'
+import { getBookingById } from '@/services/booking.service'
 import Link from 'next/link'
 
 export default async function PaymentPage({ params }: { params: Promise<{ bookingId: string }> }) {
@@ -13,14 +14,9 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
     redirect('/api/auth/signin')
   }
 
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    include: {
-      mentor: { include: { user: true } },
-    },
-  })
-
-  if (!booking || booking.studentId !== session.user.id) {
+  const booking = await getBookingById(bookingId, session.user.id)
+  
+  if (!booking) {
     return notFound()
   }
 
@@ -43,8 +39,7 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
     )
   }
 
-  // Handle expired payment
-  if (booking.paymentExpiresAt && new Date() > booking.paymentExpiresAt && booking.status === 'payment_pending') {
+  if (booking.status === 'expired' || booking.status === 'cancelled') {
     return (
       <main className="min-h-screen bg-[#f9f9f9] flex items-center justify-center p-4">
         <div className="bg-white border flex flex-col items-center border-[rgba(221,193,175,0.2)] rounded-3xl p-10 max-w-md w-full text-center">

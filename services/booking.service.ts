@@ -1,4 +1,27 @@
 import { prisma } from '@/lib/prisma'
+import { BookingStatus, Booking } from '@prisma/client'
+
+/** Helper to conditionally expire bookings at the time of read */
+export async function expireBookingsIfNeeded(bookings: Booking[]) {
+  const expiredIds = bookings
+    .filter(b => b.status === BookingStatus.payment_pending && b.paymentExpiresAt && new Date() > b.paymentExpiresAt)
+    .map(b => b.id)
+  
+  if (expiredIds.length > 0) {
+    await prisma.booking.updateMany({
+      where: { id: { in: expiredIds } },
+      data: { status: BookingStatus.expired }
+    })
+    
+    // Mutate the local copies to reflect the change immediately
+    for (const b of bookings) {
+      if (expiredIds.includes(b.id)) {
+        b.status = BookingStatus.expired
+      }
+    }
+  }
+}
+
 
 export async function createBooking(
   studentId: string,
@@ -29,17 +52,38 @@ export async function createBooking(
         status: { in: ['payment_pending', 'awaiting_payment', 'payment_complete', 'scheduled', 'in_progress'] },
       },
     })
-    if (slotConflict) throw new Error('SLOT_ALREADY_BOOKED')
+    
+    // Clear dead slot if expired immediately inside transaction
+    if (slotConflict) {
+      if (slotConflict.status === 'payment_pending' && slotConflict.paymentExpiresAt && new Date() > slotConflict.paymentExpiresAt) {
+        await tx.booking.update({
+          where: { id: slotConflict.id },
+          data: { status: 'expired' }
+        })
+      } else {
+        throw new Error('SLOT_ALREADY_BOOKED')
+      }
+    }
 
     // Student specific anti-spam check
     const existing = await tx.booking.findFirst({
       where: {
         studentId,
         mentorId,
-        status: { notIn: ['cancelled', 'completed'] },
+        status: { notIn: ['cancelled', 'expired', 'completed'] },
       },
     })
-    if (existing) throw new Error('DUPLICATE_BOOKING')
+    
+    if (existing) {
+       if (existing.status === 'payment_pending' && existing.paymentExpiresAt && new Date() > existing.paymentExpiresAt) {
+        await tx.booking.update({
+          where: { id: existing.id },
+          data: { status: 'expired' }
+        })
+      } else {
+        throw new Error('DUPLICATE_BOOKING')
+      }
+    }
 
     const paymentExpiresAt = new Date(Date.now() + 30 * 60 * 1000)
 
@@ -82,6 +126,8 @@ export async function getStudentBookings(
     }),
   ])
 
+  await expireBookingsIfNeeded(bookings as unknown as Booking[])
+
   return { bookings, total, page, limit }
 }
 
@@ -95,6 +141,9 @@ export async function getBookingById(bookingId: string, userId: string) {
   })
 
   if (!booking || booking.studentId !== userId) return null
+  
+  await expireBookingsIfNeeded([booking as unknown as Booking])
+  
   return booking
 }
 
@@ -119,6 +168,8 @@ export async function getMentorBookings(
       skip: (page - 1) * limit,
     }),
   ])
+
+  await expireBookingsIfNeeded(bookings as unknown as Booking[])
 
   return { bookings, total, page, limit }
 }
