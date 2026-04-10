@@ -6,12 +6,18 @@
  *   CAL_REDIRECT_URI=https://yourdomain.com/api/auth/cal/callback
  */
 
-export const CAL_AUTH_URL   = 'https://app.cal.com/auth/oauth2/authorize'
-export const CAL_TOKEN_URL  = 'https://app.cal.com/auth/oauth2/token'
-export const CAL_ME_URL     = 'https://api.cal.com/v1/me'
+export const CAL_AUTH_URL = 'https://app.cal.com/auth/oauth2/authorize'
+export const CAL_TOKEN_URL = 'https://app.cal.com/auth/oauth2/token'
+export const CAL_ME_URL = 'https://api.cal.com/v1/me'
 
-export const CAL_SCOPES     = ['READ_BOOKING', 'READ_PROFILE'].join(',')
+export const CAL_SCOPES = [
+  'read:profile',
+  'read:bookings',
+  'read:availability',
+  'write:availability',
+  'write:event-types'
+].join(' ')
 
-export function getCalClientId()     { return process.env.CAL_CLIENT_ID! }
+export function getCalClientId() { return process.env.CAL_CLIENT_ID! }
 export function getCalClientSecret() { return process.env.CAL_CLIENT_SECRET! }
-export function getCalRedirectUri()  { return process.env.CAL_REDIRECT_URI! }
+export function getCalRedirectUri() { return process.env.CAL_REDIRECT_URI! }

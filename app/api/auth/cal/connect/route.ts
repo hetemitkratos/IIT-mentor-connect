@@ -22,13 +22,16 @@ export async function GET(req: NextRequest) {
     return error('Cal.com integration is not configured on this server.', 500)
   }
 
-  const params = new URLSearchParams({
-    client_id:     clientId,
-    redirect_uri:  redirectUri,
-    response_type: 'code',
-    scope:         CAL_SCOPES,
-    state:         session.user.id,   // use userId as CSRF-lite state param
-  })
+  const authUrl = new URL(CAL_AUTH_URL)
+  
+  authUrl.searchParams.set("client_id", clientId)
+  authUrl.searchParams.set("redirect_uri", redirectUri)
+  authUrl.searchParams.set("response_type", "code")
+  authUrl.searchParams.set("scope", CAL_SCOPES)
+  // use userId as CSRF-lite state param so callback still successfully identifies user
+  authUrl.searchParams.set("state", session.user.id) 
 
-  return Response.redirect(`${CAL_AUTH_URL}?${params.toString()}`)
+  console.log("Cal OAuth URL:", authUrl.toString())
+
+  return Response.redirect(authUrl.toString())
 }
