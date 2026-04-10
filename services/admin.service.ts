@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/prisma'
-import { getCollegeIdSignedUrl } from '@/lib/supabase'
 
 export async function getApplications(status = 'pending', page = 1, limit = 20) {
   const where = { status: status as never }
@@ -14,18 +13,8 @@ export async function getApplications(status = 'pending', page = 1, limit = 20) 
     }),
   ])
 
-  // Generate signed URLs for college IDs stored in Supabase
-  // Plain URLs (http/https) are passed through as-is
-  const applicationsWithUrls = await Promise.all(
-    applications.map(async (app) => ({
-      ...app,
-      collegeIdUrl: app.collegeIdUrl?.startsWith('http')
-        ? app.collegeIdUrl
-        : await getCollegeIdSignedUrl(app.collegeIdUrl),
-    }))
-  )
-
-  return { applications: applicationsWithUrls, total, page }
+  // College IDs are stored as plain URLs (Google Drive / public links)
+  return { applications, total, page }
 }
 
 export async function approveApplication(applicationId: string) {
@@ -41,13 +30,13 @@ export async function approveApplication(applicationId: string) {
     }),
     prisma.mentor.create({
       data: {
-        userId: application.userId,
-        iit: application.iit,
-        branch: application.branch,
-        year: application.year,
+        userId:    application.userId,
+        iit:       application.iit,
+        branch:    application.branch,
+        year:      application.year,
         languages: application.languages,
-        bio: application.bio,
-        calLink: application.calLink,
+        bio:       application.bio,
+        calLink:   application.calLink,
       },
     }),
     prisma.user.update({
@@ -71,7 +60,7 @@ export async function getAllBookings(status?: string, page = 1, limit = 20) {
     prisma.booking.findMany({
       where,
       include: {
-        mentor: { include: { user: { select: { name: true } } } },
+        mentor:  { include: { user: { select: { name: true } } } },
         student: { select: { name: true } },
         payment: true,
       },

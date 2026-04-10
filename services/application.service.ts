@@ -1,6 +1,4 @@
 import { prisma } from '@/lib/prisma'
-import { getCollegeIdSignedUrl } from '@/lib/supabase'
-
 import { MentorApplyInput } from '@/lib/validators/mentor.validator'
 
 export async function submitApplication(
@@ -20,17 +18,17 @@ export async function submitApplication(
   })
 
   return prisma.mentorApplication.create({
-    data: { 
-      userId, 
-      iit: data.iit,
-      branch: data.branch,
-      year: parseInt(data.year, 10),
-      rank: data.rank,
-      state: data.state,
-      languages: data.languages.split(',').map(s => s.trim()).filter(Boolean),
-      bio: data.bio,
-      calLink: data.calLink,
-      collegeIdUrl: fileUrl 
+    data: {
+      userId,
+      iit:         data.iit,
+      branch:      data.branch,
+      year:        parseInt(data.year, 10),
+      rank:        data.rank,
+      state:       data.state,
+      languages:   data.languages.split(',').map(s => s.trim()).filter(Boolean),
+      bio:         data.bio,
+      calLink:     data.calLink,
+      collegeIdUrl: fileUrl,
     },
   })
 }

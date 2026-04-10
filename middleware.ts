@@ -16,12 +16,10 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
 
   if (!token) {
-    // Log unauthorized access attempt for debugging
-    console.warn('[middleware] Unauthorized access attempt:', pathname)
     return NextResponse.redirect(new URL('/', req.url))
   }
 
-  // Authenticated — no role logic here; role checks happen server-side in route handlers
+  // Authenticated — role checks happen server-side in route handlers
   return NextResponse.next()
 }
 

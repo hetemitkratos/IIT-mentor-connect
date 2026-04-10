@@ -41,17 +41,16 @@ function loadRazorpaySDK(): Promise<void> {
 export interface UseBookingFlowProps {
   mentorId: string
   mentorName: string
-  calendlyLink?: string
+  calLink?: string
 }
 
-export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookingFlowProps) {
+export function useBookingFlow({ mentorId, mentorName, calLink }: UseBookingFlowProps) {
   const router = useRouter()
   const { data: session, status } = useSession()
 
-  const [step, setStep]               = useState<FlowStep>('idle')
-  const [flowError, setFlowError]     = useState<FlowError | null>(null)
-  const [calendlyUrl, setCalendlyUrl] = useState<string>('')
-  const [finalCalendlyUrl, setFinalCalendlyUrl] = useState<string | null>(null)
+  const [step, setStep]           = useState<FlowStep>('idle')
+  const [flowError, setFlowError] = useState<FlowError | null>(null)
+  const [finalCalUrl, setFinalCalUrl] = useState<string | null>(null)
   const [savedBookingId, setSavedBookingId] = useState<string | null>(null)
   const [sessionToken, setSessionToken]     = useState<string | null>(null)
 
@@ -64,7 +63,7 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
 
   const startBookingFlow = useCallback(async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
-    
+
     // Redirect to login if user is not authenticated
     if (status === 'unauthenticated') {
       router.push(`/signin?callbackUrl=${encodeURIComponent(window.location.href)}`)
@@ -77,7 +76,7 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
     setFlowError(null)
 
     try {
-      let bookingId = savedBookingId
+      let bookingId    = savedBookingId
       let currentToken = sessionToken
 
       if (!bookingId) {
@@ -99,22 +98,24 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
       }
 
       if (!PAYMENT_ENABLED) {
-        if (!calendlyLink) {
+        if (!calLink) {
           setStep('booked')
           router.push('/dashboard')
           return
         }
-        const separator = calendlyLink.includes('?') ? '&' : '?'
-        const studentName = session?.user?.name
+        // Append session token + student info as query params to the Cal.com link
+        const separator    = calLink.includes('?') ? '&' : '?'
+        const studentName  = session?.user?.name
         const studentEmail = session?.user?.email
-        const nameParam = studentName ? `&name=${encodeURIComponent(studentName)}` : ''
-        const emailParam = studentEmail ? `&email=${encodeURIComponent(studentEmail)}` : ''
-        const url = `${calendlyLink}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`
-        setFinalCalendlyUrl(url)
+        const nameParam    = studentName  ? `&name=${encodeURIComponent(studentName)}`   : ''
+        const emailParam   = studentEmail ? `&email=${encodeURIComponent(studentEmail)}` : ''
+        const url = `${calLink}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`
+        setFinalCalUrl(url)
         setStep('booked')
         return
       }
 
+      // ── Payment-enabled flow ──────────────────────────────────────────────
       setStep('creating_order')
       const orderRes = await fetch('/api/payments/create-order', {
         method: 'POST',
@@ -126,8 +127,7 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
         handleError(orderJson.error ?? 'Failed to create payment order')
         return
       }
-      const { orderId, amount, currency, keyId, calendlyUrl: cUrl } = orderJson.data
-      setCalendlyUrl(cUrl)
+      const { orderId, amount, currency, keyId, calUrl: cUrl } = orderJson.data
 
       setStep('razorpay_open')
       await loadRazorpaySDK()
@@ -158,12 +158,12 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
             }
 
             setStep('redirecting')
-            const separator = cUrl.includes('?') ? '&' : '?'
-            const studentName = session?.user?.name
+            const separator    = cUrl.includes('?') ? '&' : '?'
+            const studentName  = session?.user?.name
             const studentEmail = session?.user?.email
-            const nameParam = studentName ? `&name=${encodeURIComponent(studentName)}` : ''
-            const emailParam = studentEmail ? `&email=${encodeURIComponent(studentEmail)}` : ''
-            setFinalCalendlyUrl(`${cUrl}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`)
+            const nameParam    = studentName  ? `&name=${encodeURIComponent(studentName)}`   : ''
+            const emailParam   = studentEmail ? `&email=${encodeURIComponent(studentEmail)}` : ''
+            setFinalCalUrl(`${cUrl}${separator}utm_source=${currentToken ?? ''}${nameParam}${emailParam}`)
             resolve()
           },
           modal: {
@@ -181,7 +181,7 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
         handleError(message)
       }
     }
-  }, [isProcessing, mentorId, mentorName, calendlyLink, sessionToken, savedBookingId, handleError, router, status, session])
+  }, [isProcessing, mentorId, mentorName, calLink, sessionToken, savedBookingId, handleError, router, status, session])
 
   return {
     step,
@@ -190,6 +190,6 @@ export function useBookingFlow({ mentorId, mentorName, calendlyLink }: UseBookin
     setFlowError,
     isProcessing,
     startBookingFlow,
-    finalCalendlyUrl
+    finalCalUrl,
   }
 }

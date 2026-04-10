@@ -6,12 +6,12 @@ import { useBookingFlow, FlowStep, FlowError } from '@/hooks/useBookingFlow'
 interface BookingFlowProps {
   mentorId: string
   mentorName: string
-  calendlyLink?: string
+  calLink?: string
   studentName?: string | null
   studentEmail?: string | null
 }
 
-export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowProps) {
+export function BookingFlow({ mentorId, mentorName, calLink }: BookingFlowProps) {
   const router = useRouter()
 
   const {
@@ -21,8 +21,8 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowP
     setFlowError,
     isProcessing,
     startBookingFlow,
-    finalCalendlyUrl,
-  } = useBookingFlow({ mentorId, mentorName, calendlyLink })
+    finalCalUrl,
+  } = useBookingFlow({ mentorId, mentorName, calLink })
 
   // ── Step label ─────────────────────────────────────────────────────────────
   const stepLabel: Record<FlowStep, string> = {
@@ -32,25 +32,24 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowP
     creating_order:   'Preparing payment…',
     razorpay_open:    'Complete payment in Razorpay…',
     verifying:        'Verifying payment…',
-    redirecting:      'Redirecting to Calendly…',
+    redirecting:      'Redirecting to Cal.com…',
     error:            'Book a Session — ₹150',
   }
 
   // ── Confirmed: show schedule prompt ────────────────────────────────────────
-  if (step === 'booked' && finalCalendlyUrl) {
+  if (step === 'booked' && finalCalUrl) {
     return (
       <div style={{ textAlign: 'center', padding: '1rem 0' }}>
         <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
           ✅ Booking confirmed!
         </p>
         <p style={{ color: '#6b7280', marginBottom: '1.25rem', fontSize: '0.9rem' }}>
-          Click below to pick your time slot on Calendly.
+          Click below to pick your time slot on Cal.com.
         </p>
 
-        {/* Navigate in same tab — guaranteed to work, same as original */}
         <button
           type="button"
-          onClick={() => window.location.assign(finalCalendlyUrl)}
+          onClick={() => window.location.assign(finalCalUrl)}
           style={{
             display: 'block',
             width: '100%',
@@ -65,7 +64,7 @@ export function BookingFlow({ mentorId, mentorName, calendlyLink }: BookingFlowP
             marginBottom: '0.75rem',
           }}
         >
-          📅 Open Calendly to Schedule
+          📅 Open Cal.com to Schedule
         </button>
 
         <button
