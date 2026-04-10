@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { error } from '@/lib/api-response'
-import { CAL_AUTH_URL, CAL_SCOPES, getCalClientId, getCalRedirectUri } from '@/constants/cal'
+import { CAL_AUTH_URL, getCalClientId, getCalRedirectUri } from '@/constants/cal'
 
 /**
  * GET /api/auth/cal/connect
@@ -27,11 +27,11 @@ export async function GET(req: NextRequest) {
   authUrl.searchParams.set("client_id", clientId)
   authUrl.searchParams.set("redirect_uri", redirectUri)
   authUrl.searchParams.set("response_type", "code")
-  authUrl.searchParams.set("scope", CAL_SCOPES)
+  authUrl.searchParams.set("scope", "read:profile read:bookings read:availability write:availability write:event-types")
   // use userId as CSRF-lite state param so callback still successfully identifies user
   authUrl.searchParams.set("state", session.user.id) 
 
-  console.log("Cal OAuth URL:", authUrl.toString())
+  console.log("FINAL CAL AUTH URL:", authUrl.toString())
 
   return Response.redirect(authUrl.toString())
 }
