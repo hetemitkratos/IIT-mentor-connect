@@ -126,6 +126,7 @@ model Booking {
   // Phase 3 Slot Booking Details
   selectedDay      String?   @map("selected_day")
   selectedSlot     String?   @map("selected_slot")
+  externalScheduled Boolean  @default(false) @map("external_scheduled")
   paymentExpiresAt DateTime? @map("payment_expires_at")
   otp             String?
   otpGeneratedAt  DateTime?     @map("otp_generated_at")

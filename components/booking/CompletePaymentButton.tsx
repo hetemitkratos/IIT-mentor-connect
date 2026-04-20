@@ -121,17 +121,14 @@ export default function CompletePaymentButton({ bookingId, sessionToken }: { boo
   }
 
   return (
-    <div className="mt-4 flex flex-col items-center gap-3 w-full">
+    <div className="mt-4 flex flex-col items-start gap-2">
+      <p className="text-sm font-medium text-orange-600">Complete payment to confirm your session</p>
       <button
         onClick={handlePayment}
         disabled={loading}
-        className={`w-full py-4 text-[15px] font-semibold rounded-full transition-all flex items-center justify-center ${
-          loading
-            ? 'bg-[rgba(245,130,10,0.3)] text-[#d96e08] cursor-not-allowed'
-            : 'bg-[#f5820a] text-white hover:bg-[#e07509] shadow-[0_6px_20px_rgba(245,130,10,0.35)]'
-        }`}
+        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50"
       >
-        {loading ? 'Opening secure payment gateway...' : 'Pay ₹150 & Confirm Booking'}
+        {loading ? 'Processing...' : 'Complete Payment'}
       </button>
     </div>
   )

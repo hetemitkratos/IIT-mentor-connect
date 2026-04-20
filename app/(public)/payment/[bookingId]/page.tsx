@@ -69,6 +69,18 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
             Review your session details and complete the payment to secure your slot.
           </p>
           
+          <div className="flex flex-col gap-4 mb-8">
+            {/* Warning banners */}
+            <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-[#fff7ed] border border-[rgba(245,130,10,0.2)]">
+              <span className="text-sm shrink-0 mt-px">⚠️</span>
+              <p className="text-[13px] text-[#934b00] font-medium">Your session is <strong>only confirmed after payment</strong>.</p>
+            </div>
+            <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-[#fff7ed] border border-[rgba(245,130,10,0.2)]">
+              <span className="text-sm shrink-0 mt-px">⏱</span>
+              <p className="text-[13px] text-[#934b00] font-medium">Please complete payment within <strong>30 minutes</strong> to hold your slot.</p>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-6 mb-10">
             <div className="flex justify-between items-center bg-[#f9f9f9] p-4 rounded-2xl">
               <span className="text-[#9ca3af] text-[13px] font-semibold uppercase tracking-wider">Mentor</span>
@@ -76,7 +88,11 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
             </div>
             <div className="flex justify-between items-center bg-[#f9f9f9] p-4 rounded-2xl">
               <span className="text-[#9ca3af] text-[13px] font-semibold uppercase tracking-wider">Schedule</span>
-              <span className="text-[#1a1c1c] font-semibold">{booking.selectedDay} at {booking.selectedSlot}</span>
+              <span className="text-[#1a1c1c] font-semibold">
+                {booking.selectedDay && booking.selectedSlot
+                  ? `${booking.selectedDay} at ${booking.selectedSlot}`
+                  : 'Coordinate with mentor for exact time'}
+              </span>
             </div>
             <div className="flex justify-between items-center bg-[#f9f9f9] p-4 rounded-2xl">
               <span className="text-[#9ca3af] text-[13px] font-semibold uppercase tracking-wider">Amount</span>

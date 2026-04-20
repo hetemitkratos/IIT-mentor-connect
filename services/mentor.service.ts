@@ -74,10 +74,7 @@ export async function getMentorBySlug(slug: string) {
       languages: true,
       bio: true,
       profileImage: true,
-      availableSlots: true,
-      timezone: true,
-      availabilityConfigured: true,
-      calEventTypeId: true,
+      calLink: true,
       user: { select: { name: true, image: true } },
     },
   })

@@ -87,10 +87,7 @@ GOOGLE_CLIENT_SECRET=""
 # ── Database ─────────────────────────────────────────────────────
 DATABASE_URL=""               # postgres://user:pass@host/dbname
 
-# ── Supabase (mentor ID file upload) ─────────────────────────────
-SUPABASE_URL=""
-SUPABASE_ANON_KEY=""
-SUPABASE_SERVICE_ROLE_KEY=""
+
 
 # ── Payments ──────────────────────────────────────────────────────
 RAZORPAY_KEY_ID=""

@@ -17,16 +17,10 @@ export default async function MentorDashboardPage() {
   const mentor = await prisma.mentor.findUnique({
     where: { userId: session.user.id },
     select: {
-      id:           true,
-      iit:          true,
-      bio:          true,
-      calLink:      true,
-      calConnected: true,
-      calUsername:  true,
-      calEventTypeId: true,
-      availabilityConfigured: true,
-      availableSlots: true,
-      timezone: true,
+      id:      true,
+      iit:     true,
+      bio:     true,
+      calLink: true,
     },
   })
 
@@ -56,14 +50,8 @@ export default async function MentorDashboardPage() {
     <MentorDashboardContent
       mentorName={session.user.name ?? 'Mentor'}
       mentorIit={mentor.iit}
-      calLink={mentor.calLink}
-      calConnected={mentor.calConnected}
-      calUsername={mentor.calUsername ?? null}
-      calEventTypeId={mentor.calEventTypeId}
-      availabilityConfigured={mentor.availabilityConfigured}
-      availableSlots={mentor.availableSlots ? (mentor.availableSlots as Record<string, string[]>) : null}
-      timezone={mentor.timezone}
-      bio={mentor.bio}
+      calLink={mentor.calLink ?? null}
+      bio={mentor.bio ?? ''}
       upcomingBookings={upcomingBookings}
       ongoingBookings={ongoingBookings}
       completedBookings={completedBookings}

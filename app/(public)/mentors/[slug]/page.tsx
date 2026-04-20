@@ -22,12 +22,9 @@ export default async function MentorSlugPage({ params }: { params: Promise<{ slu
 
   const name = mentor.user.name ?? 'IIT Mentor'
   const initials = name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-  const slots = (mentor.availableSlots ?? {}) as Record<string, string[]>
-  const hasSlots = Object.keys(slots).length > 0
 
   return (
     <main className="min-h-screen bg-[#f9f9f9]" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Google Fonts */}
       <link
         href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet"
@@ -49,7 +46,6 @@ export default async function MentorSlugPage({ params }: { params: Promise<{ slu
             {/* Hero card */}
             <div className="bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-7">
               <div className="flex items-start gap-5">
-                {/* Avatar */}
                 {mentor.user.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -75,7 +71,6 @@ export default async function MentorSlugPage({ params }: { params: Promise<{ slu
                   >
                     {name}
                   </h1>
-
                   <div className="flex flex-wrap gap-2 mt-2">
                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#fff7ed] text-[#934b00] text-[11px] font-semibold tracking-[1px] uppercase rounded-full border border-[rgba(245,130,10,0.2)]">
                       {mentor.iit}
@@ -121,25 +116,6 @@ export default async function MentorSlugPage({ params }: { params: Promise<{ slu
                 )}
               </div>
             </div>
-
-            {/* Available Days preview */}
-            {hasSlots && (
-              <div className="bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-7">
-                <h2 className="text-[11px] font-semibold tracking-[1.5px] uppercase text-[#585f6c] mb-3">
-                  Available Days
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {Object.keys(slots).map(day => (
-                    <span
-                      key={day}
-                      className="px-4 py-1.5 text-[13px] font-semibold text-[#934b00] bg-[#fff7ed] border border-[rgba(245,130,10,0.2)] rounded-full"
-                    >
-                      {day}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* ── Right column: Booking ──────────────────── */}
@@ -151,21 +127,13 @@ export default async function MentorSlugPage({ params }: { params: Promise<{ slu
               >
                 Book a Session
               </h2>
-              <p className="text-[13px] text-[#9ca3af] mb-6">Choose a day and time that works for you.</p>
+              <p className="text-[13px] text-[#9ca3af] mb-6">₹150 · 30 minutes · Google Meet</p>
 
-              {hasSlots ? (
-                <SlotBookingUI
-                  mentorId={mentor.id}
-                  mentorName={name}
-                  availableSlots={slots}
-                />
-              ) : (
-                <div className="p-5 rounded-xl bg-[#fafafa] border border-[rgba(221,193,175,0.15)] text-center">
-                  <p className="text-[13px] text-[#9ca3af]">
-                    Availability not configured yet. Check back soon.
-                  </p>
-                </div>
-              )}
+              <SlotBookingUI
+                mentorId={mentor.id}
+                mentorName={name}
+                calLink={mentor.calLink ?? null}
+              />
             </div>
           </div>
         </div>

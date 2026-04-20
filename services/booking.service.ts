@@ -26,8 +26,8 @@ export async function expireBookingsIfNeeded(bookings: Booking[]) {
 export async function createBooking(
   studentId: string,
   mentorId: string,
-  selectedDay: string,
-  selectedSlot: string
+  selectedDay?: string,
+  selectedSlot?: string
 ) {
   return prisma.$transaction(async (tx) => {
     // Integrity checks
@@ -36,36 +36,7 @@ export async function createBooking(
     if (mentor.userId === studentId) throw new Error('INVALID_BOOKING')
     if (!mentor.isActive) throw new Error('MENTOR_INACTIVE')
 
-    // Validate the selected slot is available 
-    const availableSlots = (mentor.availableSlots ?? {}) as Record<string, string[]>
-    const daySlots = availableSlots[selectedDay]
-    if (!daySlots || !daySlots.includes(selectedSlot)) {
-      throw new Error('INVALID_SLOT')
-    }
-
-    // Double-booking prevention
-    const slotConflict = await tx.booking.findFirst({
-      where: {
-        mentorId,
-        selectedDay,
-        selectedSlot,
-        status: { in: ['payment_pending', 'awaiting_payment', 'payment_complete', 'scheduled', 'in_progress'] },
-      },
-    })
-    
-    // Clear dead slot if expired immediately inside transaction
-    if (slotConflict) {
-      if (slotConflict.status === 'payment_pending' && slotConflict.paymentExpiresAt && new Date() > slotConflict.paymentExpiresAt) {
-        await tx.booking.update({
-          where: { id: slotConflict.id },
-          data: { status: 'expired' }
-        })
-      } else {
-        throw new Error('SLOT_ALREADY_BOOKED')
-      }
-    }
-
-    // Student specific anti-spam check
+    // Student anti-spam: one active booking per mentor at a time
     const existing = await tx.booking.findFirst({
       where: {
         studentId,
@@ -73,9 +44,10 @@ export async function createBooking(
         status: { notIn: ['cancelled', 'expired', 'completed'] },
       },
     })
-    
+
     if (existing) {
-       if (existing.status === 'payment_pending' && existing.paymentExpiresAt && new Date() > existing.paymentExpiresAt) {
+      // Clear the stale slot if it just expired
+      if (existing.status === 'payment_pending' && existing.paymentExpiresAt && new Date() > existing.paymentExpiresAt) {
         await tx.booking.update({
           where: { id: existing.id },
           data: { status: 'expired' }
@@ -88,16 +60,16 @@ export async function createBooking(
     const paymentExpiresAt = new Date(Date.now() + 30 * 60 * 1000)
 
     const booking = await tx.booking.create({
-      data: { 
-        studentId, 
+      data: {
+        studentId,
         mentorId,
-        selectedDay,
-        selectedSlot,
+        selectedDay: selectedDay ?? null,
+        selectedSlot: selectedSlot ?? null,
         status: 'payment_pending',
         paymentExpiresAt
       },
     })
-    console.log('[BOOKING_CREATED]', { bookingId: booking.id, studentId, mentorId, selectedDay, selectedSlot })
+    console.log('[BOOKING_CREATED]', { bookingId: booking.id, studentId, mentorId })
     return booking
   })
 }

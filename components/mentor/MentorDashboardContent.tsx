@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 
 /* ─────────────────────────────────────────────────────────────────
-   TYPES (mirrors what the server passes down)
+   TYPES
 ───────────────────────────────────────────────────────────────── */
 export interface BookingRow {
   id: string
@@ -18,17 +18,11 @@ export interface BookingRow {
 }
 
 interface Props {
-  mentorName:       string
-  mentorIit:        string
-  calLink:          string | null
-  calConnected:     boolean
-  calUsername:      string | null
-  calEventTypeId:   string | null
-  availabilityConfigured: boolean
-  availableSlots:   Record<string, string[]> | null
-  timezone:         string | null
-  upcomingBookings: BookingRow[]
-  ongoingBookings:  BookingRow[]
+  mentorName:        string
+  mentorIit:         string
+  calLink:           string | null
+  upcomingBookings:  BookingRow[]
+  ongoingBookings:   BookingRow[]
   completedBookings: BookingRow[]
   cancelledBookings: BookingRow[]
   stats: {
@@ -71,7 +65,7 @@ function isWithin7Days(date: Date | null) {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   AVATAR
+   SUB-COMPONENTS
 ───────────────────────────────────────────────────────────────── */
 function Avatar({ name, image, size = 'md' }: { name: string | null; image: string | null; size?: 'sm' | 'md' }) {
   const cls = size === 'md' ? 'w-14 h-14 text-lg' : 'w-10 h-10 text-sm'
@@ -88,9 +82,6 @@ function Avatar({ name, image, size = 'md' }: { name: string | null; image: stri
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   STAT CARD
-───────────────────────────────────────────────────────────────── */
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <div className="bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-7 flex flex-col gap-1.5">
@@ -103,17 +94,12 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   FILTER PILL
-───────────────────────────────────────────────────────────────── */
 function FilterPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
       className={`text-[11px] font-semibold tracking-[1.2px] uppercase px-3 py-1.5 rounded-full transition-all ${
-        active
-          ? 'bg-[#f5820a] text-white shadow-sm'
-          : 'text-[#585f6c] hover:text-[#1a1c1c]'
+        active ? 'bg-[#f5820a] text-white shadow-sm' : 'text-[#585f6c] hover:text-[#1a1c1c]'
       }`}
     >
       {children}
@@ -121,10 +107,7 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   SECTION HEADER
-───────────────────────────────────────────────────────────────── */
-function SectionHeader({ title, filter, onFilter }: { 
+function SectionHeader({ title, filter, onFilter }: {
   title: string
   filter: 'all' | '7days'
   onFilter: (f: 'all' | '7days') => void
@@ -142,9 +125,6 @@ function SectionHeader({ title, filter, onFilter }: {
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   SECTION HEADER (completed — uses "recent" filter)
-───────────────────────────────────────────────────────────────── */
 function CompletedHeader({ filter, onFilter }: { filter: 'all' | 'recent'; onFilter: (f: 'all' | 'recent') => void }) {
   return (
     <div className="flex items-baseline justify-between mb-6">
@@ -159,15 +139,12 @@ function CompletedHeader({ filter, onFilter }: { filter: 'all' | 'recent'; onFil
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   STATUS BADGE
-───────────────────────────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; text: string; label: string }> = {
-    scheduled:     { bg: 'bg-[#f0fdf4]', text: 'text-[#16a34a]', label: 'Confirmed' },
-    in_progress:   { bg: 'bg-[#fff7ed]', text: 'text-[#d96e08]', label: 'In Progress' },
-    completed:     { bg: 'bg-[#fdf6dc]', text: 'text-[#B8962E]', label: 'Completed' },
-    cancelled:     { bg: 'bg-[#f9fafb]', text: 'text-[#9ca3af]', label: 'Cancelled' },
+    scheduled:   { bg: 'bg-[#f0fdf4]', text: 'text-[#16a34a]', label: 'Confirmed' },
+    in_progress: { bg: 'bg-[#fff7ed]', text: 'text-[#d96e08]', label: 'In Progress' },
+    completed:   { bg: 'bg-[#fdf6dc]', text: 'text-[#B8962E]', label: 'Completed' },
+    cancelled:   { bg: 'bg-[#f9fafb]', text: 'text-[#9ca3af]', label: 'Cancelled' },
   }
   const s = map[status] ?? { bg: 'bg-[#f9fafb]', text: 'text-[#9ca3af]', label: status }
   return (
@@ -177,9 +154,6 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   EMPTY STATE
-───────────────────────────────────────────────────────────────── */
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="border border-dashed border-[rgba(221,193,175,0.4)] rounded-2xl p-8 text-center text-[#9ca3af] text-sm">
@@ -188,9 +162,6 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   UPCOMING SESSION CARD
-───────────────────────────────────────────────────────────────── */
 function UpcomingCard({ b }: { b: BookingRow }) {
   return (
     <div className="flex items-center justify-between py-4 border-b border-[rgba(221,193,175,0.15)] last:border-0">
@@ -230,9 +201,6 @@ function UpcomingCard({ b }: { b: BookingRow }) {
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   ONGOING SESSION CARD (with OTP + Complete button)
-───────────────────────────────────────────────────────────────── */
 function OngoingCard({ b }: { b: BookingRow }) {
   const router = useRouter()
   const [otp, setOtp] = useState('')
@@ -276,7 +244,6 @@ function OngoingCard({ b }: { b: BookingRow }) {
 
   return (
     <div className="bg-[#fff7ed] border border-[rgba(245,130,10,0.15)] rounded-2xl p-5 flex flex-col gap-4">
-      {/* Top row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -296,7 +263,6 @@ function OngoingCard({ b }: { b: BookingRow }) {
             </div>
           </div>
         </div>
-        {/* Join Meet */}
         {b.meetingLink ? (
           <a
             href={b.meetingLink}
@@ -313,7 +279,6 @@ function OngoingCard({ b }: { b: BookingRow }) {
         )}
       </div>
 
-      {/* OTP section */}
       <div className="border-t border-[rgba(245,130,10,0.15)] pt-4">
         {verified ? (
           <div className="flex items-center justify-between">
@@ -372,9 +337,6 @@ function OngoingCard({ b }: { b: BookingRow }) {
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   COMPLETED SESSION ROW
-───────────────────────────────────────────────────────────────── */
 function CompletedRow({ b }: { b: BookingRow }) {
   return (
     <div className="flex items-center justify-between py-3.5 border-b border-[rgba(221,193,175,0.15)] last:border-0">
@@ -391,33 +353,112 @@ function CompletedRow({ b }: { b: BookingRow }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   MAIN DASHBOARD CONTENT (client — owns filter state)
+   CAL LINK SETTINGS CARD
+───────────────────────────────────────────────────────────────── */
+function CalLinkSettings({ initialCalLink }: { initialCalLink: string | null }) {
+  const router = useRouter()
+  const [calLink, setCalLink] = useState(initialCalLink ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    setError(null)
+    setSaved(false)
+    try {
+      const res = await fetch('/api/mentor/update-cal-link', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calLink }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to save link')
+        return
+      }
+      setSaved(true)
+      router.refresh()
+    } catch {
+      setError('Network error. Try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-6 mb-10">
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#585f6c]">Scheduling Link</h2>
+          <p className="text-[#6b7280] text-[13px] leading-relaxed mt-1 max-w-lg">
+            Paste your Cal.com booking link. Students will use this to schedule their session before paying.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 max-w-xl">
+          <input
+            type="url"
+            value={calLink}
+            onChange={e => { setCalLink(e.target.value); setSaved(false) }}
+            placeholder="https://cal.com/your-username/session"
+            className="flex-1 px-4 py-2.5 text-sm border border-[rgba(221,193,175,0.4)] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#f5820a]/30 text-[#1a1c1c] placeholder:text-[#9ca3af]"
+          />
+          <button
+            onClick={handleSave}
+            disabled={saving || !calLink.trim()}
+            className="px-5 py-2.5 bg-[#f5820a] text-white text-[13px] font-semibold rounded-full hover:bg-[#e07509] transition-colors shadow-sm disabled:opacity-50 shrink-0"
+          >
+            {saving ? 'Saving…' : 'Save Link'}
+          </button>
+        </div>
+
+        {error && <p className="text-[12px] text-[#ba1a1a]">{error}</p>}
+        {saved && (
+          <p className="text-[12px] text-[#16a34a] flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Link saved successfully
+          </p>
+        )}
+
+        {calLink && calLink.startsWith('https://cal.com/') && (
+          <div className="flex items-center gap-2 mt-1">
+            <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" />
+            <span className="text-[12px] text-[#16a34a] font-medium">Scheduling link active</span>
+            <a
+              href={calLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[12px] text-[#9ca3af] hover:text-[#585f6c] underline transition-colors ml-1"
+            >
+              Preview →
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   MAIN DASHBOARD
 ───────────────────────────────────────────────────────────────── */
 export default function MentorDashboardContent({
   mentorName, mentorIit,
-  calLink, calConnected, calUsername,
-  calEventTypeId, availabilityConfigured,
-  availableSlots: initialSlots, timezone: initialTimezone,
+  calLink,
   upcomingBookings, ongoingBookings,
   completedBookings, cancelledBookings,
   stats, bio,
 }: Props) {
-  const router = useRouter()
   const [upcomingFilter, setUpcomingFilter] = useState<'all' | '7days'>('7days')
   const [completedFilter, setCompletedFilter] = useState<'all' | 'recent'>('recent')
 
-  // Availability State
-  const [slots, setSlots] = useState<Record<string, string[]>>(initialSlots || {})
-  const [tz, setTz] = useState(initialTimezone || 'Asia/Kolkata')
-  const [savingAvail, setSavingAvail] = useState(false)
-  const [creatingEvent, setCreatingEvent] = useState(false)
-
-  // Filter upcoming
   const filteredUpcoming = upcomingFilter === '7days'
     ? upcomingBookings.filter(b => isWithin7Days(b.startTime))
     : upcomingBookings
 
-  // Filter completed (last 30 days)
   const filteredCompleted = completedFilter === 'recent'
     ? completedBookings.filter(b => {
         const t = b.startTime ?? b.createdAt
@@ -429,66 +470,6 @@ export default function MentorDashboardContent({
   const earned = stats.earningsRs >= 1000
     ? `₹${(stats.earningsRs / 1000).toFixed(0)}k`
     : `₹${stats.earningsRs}`
-
-  const handleSaveAvailability = async () => {
-    setSavingAvail(true)
-    try {
-      const res = await fetch('/api/mentor/availability', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ availableSlots: slots, timezone: tz }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      router.refresh()
-    } catch (err) {
-      alert(err)
-    } finally {
-      setSavingAvail(false)
-    }
-  }
-
-  const handleCreateEventType = async () => {
-    setCreatingEvent(true)
-    try {
-      const res = await fetch('/api/mentor/cal/create-event', { method: 'POST' })
-      if (!res.ok) throw new Error(await res.text())
-      router.refresh()
-      alert('Event type created successfully! You are now ready.')
-    } catch (err) {
-      alert(err)
-    } finally {
-      setCreatingEvent(false)
-    }
-  }
-
-  const toggleDay = (d: string) => {
-    setSlots(prev => {
-      const next = { ...prev }
-      if (next[d]) delete next[d]
-      else next[d] = []
-      return next
-    })
-  }
-
-  const toggleSlot = (d: string, time: string) => {
-    setSlots(prev => {
-      const next = { ...prev }
-      if (!next[d]) next[d] = []
-      if (next[d].includes(time)) {
-        next[d] = next[d].filter((t: string) => t !== time)
-      } else {
-        next[d] = [...next[d], time].sort()
-      }
-      return next
-    })
-  }
-
-  const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const AVAILABLE_TIME_BLOCKS = [
-    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
-    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-    "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30"
-  ]
 
   return (
     <div className="min-h-screen bg-[#f9f9f9]">
@@ -515,139 +496,8 @@ export default function MentorDashboardContent({
           <StatCard label="Rating" value={stats.rating ? stats.rating.toFixed(1) : '—'} sub="avg. from students" />
         </div>
 
-        {/* ── Cal.com Scheduling Settings ──────────────────────────── */}
-        <div className="bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-6 mb-10">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div className="flex flex-col gap-1">
-                <h2 className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#585f6c]">Scheduling Settings</h2>
-                <p className="text-[#6b7280] text-[13px] leading-relaxed max-w-sm mt-0.5">
-                  Connect your Cal.com account to manage session availability and let students book directly.
-                </p>
-
-                {/* Status List */}
-                <div className="mt-3 flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${calConnected ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`} />
-                    <span className={`text-[12px] font-medium ${calConnected ? 'text-[#16a34a]' : 'text-[#9ca3af]'}`}>
-                      {calConnected ? calUsername ? `Connected as @${calUsername}` : 'Cal.com Connected' : 'Cal.com Not Connected'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${availabilityConfigured ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`} />
-                    <span className={`text-[12px] font-medium ${availabilityConfigured ? 'text-[#16a34a]' : 'text-[#9ca3af]'}`}>
-                      {availabilityConfigured ? 'Availability Configured' : 'Availability Not Configured'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${calEventTypeId ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`} />
-                    <span className={`text-[12px] font-medium ${calEventTypeId ? 'text-[#16a34a]' : 'text-[#9ca3af]'}`}>
-                      {calEventTypeId ? 'Event Type Created' : 'No Event Type'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
-                {calConnected ? (
-                  <>
-                    {calLink && (
-                      <a
-                        href={calLink.startsWith('http') ? calLink : `https://cal.com/${calUsername ?? ''}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-5 py-2 text-[13px] font-medium text-[#d96e08] border border-[rgba(245,130,10,0.3)] rounded-full hover:bg-[#fff7ed] transition-colors"
-                      >
-                        Open Cal.com →
-                      </a>
-                    )}
-                    <a
-                      href="/api/auth/cal/connect"
-                      className="text-[11px] text-[#9ca3af] hover:text-[#585f6c] transition-colors underline"
-                    >
-                      Reconnect
-                    </a>
-                  </>
-                ) : (
-                  <a
-                    href="/api/auth/cal/connect"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#191c1d] text-white text-[13px] font-semibold rounded-full hover:bg-black transition-colors shadow-sm"
-                  >
-                    Connect Cal.com
-                  </a>
-                )}
-              </div>
-            </div>
-
-            {calConnected && (
-              <div className="pt-6 border-t border-[rgba(221,193,175,0.2)]">
-                <h3 className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#585f6c] mb-4">Availability Settings</h3>
-                
-                <div className="flex flex-col gap-4 max-w-2xl">
-                  {/* Days */}
-                  <div>
-                    <label className="block text-[12px] font-medium text-[#585f6c] mb-2">Available Days</label>
-                    <div className="flex flex-wrap gap-2">
-                      {DAY_LABELS.map(d => (
-                        <button
-                          key={d}
-                          onClick={() => toggleDay(d)}
-                          className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors border ${slots[d] ? 'bg-[#f5820a] text-white border-[#f5820a]' : 'bg-transparent text-[#585f6c] border-[rgba(221,193,175,0.4)] hover:bg-[#fff7ed] hover:border-[#f5820a]'}`}
-                        >
-                          {d}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Slots per selected day */}
-                  {DAY_LABELS.map(d => {
-                    if (!slots[d]) return null
-                    return (
-                      <div key={`slots-${d}`} className="mt-2 p-4 border border-[rgba(221,193,175,0.2)] rounded-2xl bg-[#fafafa]">
-                        <label className="block text-[12px] font-medium text-[#585f6c] mb-3"><span className="text-[#f5820a]">{d}</span> &mdash; Select specific 30-min slots</label>
-                        <div className="flex flex-wrap gap-2">
-                          {AVAILABLE_TIME_BLOCKS.map(time => {
-                            const isSelected = slots[d].includes(time)
-                            return (
-                              <button
-                                key={`${d}-${time}`}
-                                onClick={() => toggleSlot(d, time)}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors border ${isSelected ? 'bg-[#191c1d] text-white border-[#191c1d]' : 'bg-white text-[#585f6c] border-[rgba(221,193,175,0.4)] hover:border-[#9ca3af]'}`}
-                              >
-                                {time}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })}
-
-                  {/* Timezone */}
-                  <div className="mt-2 w-full sm:w-1/3">
-                    <label className="block text-[12px] font-medium text-[#585f6c] mb-2">Timezone</label>
-                    <select value={tz} onChange={e => setTz(e.target.value)} className="w-full px-3 py-2 text-sm border border-[rgba(221,193,175,0.4)] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#f5820a]/30">
-                      <option value="Asia/Kolkata">Asia/Kolkata</option>
-                      <option value="UTC">UTC</option>
-                    </select>
-                  </div>
-
-                  <div className="flex items-center gap-3 mt-2">
-                    <button onClick={handleSaveAvailability} disabled={savingAvail} className="px-5 py-2 bg-[#f5820a] text-white text-[13px] font-semibold rounded-full hover:bg-[#e07509] transition-colors shadow-sm disabled:opacity-70">
-                      {savingAvail ? 'Saving...' : 'Save Availability'}
-                    </button>
-                    {availabilityConfigured && !calEventTypeId && (
-                      <button onClick={handleCreateEventType} disabled={creatingEvent} className="px-5 py-2 bg-[#191c1d] text-white text-[13px] font-semibold rounded-full hover:bg-black transition-colors shadow-sm disabled:opacity-70">
-                        {creatingEvent ? 'Creating...' : 'Create Event on Cal.com'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* ── Cal.com Scheduling Link ──────────────────────────────── */}
+        <CalLinkSettings initialCalLink={calLink} />
 
         {/* ── ONGOING SESSIONS ────────────────────────────────────── */}
         {ongoingBookings.length > 0 && (
@@ -720,7 +570,6 @@ export default function MentorDashboardContent({
         <section>
           <div className="bg-[#f3f3f3] border border-[rgba(221,193,175,0.1)] rounded-3xl p-10">
             <div className="flex flex-col md:flex-row gap-10 items-center md:items-start">
-              {/* Card mock */}
               <div className="shrink-0 w-52 h-64 bg-white rounded-2xl shadow-[0px_8px_24px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center gap-3 -rotate-1 select-none">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-orange-100 to-amber-50 flex items-center justify-center text-2xl font-bold text-[#934b00]">
                   {initials(mentorName)}
@@ -730,10 +579,9 @@ export default function MentorDashboardContent({
                   <p className="text-[11px] text-[#585f6c] mt-0.5">{mentorIit}</p>
                 </div>
                 <div className="px-4 py-1.5 bg-[#f5820a] text-white text-[11px] font-semibold rounded-full">
-                  ₹100 / session
+                  ₹150 / session
                 </div>
               </div>
-              {/* Info */}
               <div className="flex-1">
                 <h2 className="text-3xl font-normal italic text-[#1a1c1c] mb-3"
                     style={{ fontFamily: "'Newsreader', serif" }}>
@@ -748,12 +596,6 @@ export default function MentorDashboardContent({
                     className="border border-[#ddc1af] text-[#1a1c1c] text-[13px] font-medium px-5 py-2 rounded-full hover:bg-white transition-colors"
                   >
                     Edit bio
-                  </a>
-                  <a
-                    href="/mentor/profile"
-                    className="border border-[#ddc1af] text-[#1a1c1c] text-[13px] font-medium px-5 py-2 rounded-full hover:bg-white transition-colors"
-                  >
-                   Update Cal.com link
                   </a>
                   <a
                     href="/mentors"
