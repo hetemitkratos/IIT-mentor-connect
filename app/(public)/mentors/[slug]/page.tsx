@@ -132,7 +132,7 @@ export default async function MentorSlugPage({ params }: { params: Promise<{ slu
               <SlotBookingUI
                 mentorId={mentor.id}
                 mentorName={name}
-                calLink={mentor.calLink ?? null}
+                calendlyLink={mentor.calendlyLink ?? null}
               />
             </div>
           </div>

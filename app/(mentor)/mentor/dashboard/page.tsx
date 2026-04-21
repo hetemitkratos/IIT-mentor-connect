@@ -17,10 +17,10 @@ export default async function MentorDashboardPage() {
   const mentor = await prisma.mentor.findUnique({
     where: { userId: session.user.id },
     select: {
-      id:      true,
-      iit:     true,
-      bio:     true,
-      calLink: true,
+      id:           true,
+      iit:          true,
+      bio:          true,
+      calendlyLink: true,
     },
   })
 
@@ -50,7 +50,7 @@ export default async function MentorDashboardPage() {
     <MentorDashboardContent
       mentorName={session.user.name ?? 'Mentor'}
       mentorIit={mentor.iit}
-      calLink={mentor.calLink ?? null}
+      calendlyLink={mentor.calendlyLink ?? null}
       bio={mentor.bio ?? ''}
       upcomingBookings={upcomingBookings}
       ongoingBookings={ongoingBookings}

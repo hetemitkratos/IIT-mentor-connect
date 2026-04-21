@@ -83,23 +83,28 @@ model Mentor {
   state        String    @default("")
   languages    String[]
   bio          String
-  calLink         String    @map("calendly_link")
+
+  // Primary scheduling link (Calendly)
+  calendlyLink    String?   @map("calendly_link")
+
+  // Deprecated OAuth fields — retained for zero-downtime, not written to
   calAccessToken  String?   @map("cal_access_token")
   calRefreshToken String?   @map("cal_refresh_token")
   calUsername     String?   @map("cal_username")
   calConnected    Boolean   @default(false) @map("cal_connected")
+  calEventTypeId  String?   @map("cal_event_type_id")
+
+  // Deprecated availability fields — retained for zero-downtime, not written to
+  availableSlots         Json?    @map("available_slots")
+  timezone               String?  @default("Asia/Kolkata")
+  availabilityConfigured Boolean  @default(false) @map("availability_configured")
+
   profileImage    String?   @map("profile_image_url")
   isActive        Boolean   @default(true) @map("is_active")
 
-  // Phase 2 Availability Fields
-  availableSlots         Json?     @map("available_slots")
-  timezone               String?   @default("Asia/Kolkata")
-  availabilityConfigured Boolean   @default(false) @map("availability_configured")
-  calEventTypeId         String?   @map("cal_event_type_id")
-
   // Phase 3 Public Slug
-  slug                    String?   @unique @default(uuid())
-  
+  slug            String?   @unique @default(uuid())
+
   createdAt       DateTime  @default(now()) @map("created_at")
   bookings        Booking[]
   user            User      @relation(fields: [userId], references: [id])
@@ -123,19 +128,20 @@ model Booking {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   
-  // Phase 3 Slot Booking Details
-  selectedDay      String?   @map("selected_day")
-  selectedSlot     String?   @map("selected_slot")
-  externalScheduled Boolean  @default(false) @map("external_scheduled")
-  paymentExpiresAt DateTime? @map("payment_expires_at")
-  otp             String?
-  otpGeneratedAt  DateTime?     @map("otp_generated_at")
-  otpVerified     Boolean       @default(false) @map("otp_verified")
-  rating          Int?
-  review          String?       @db.VarChar(300)
-  mentor          Mentor        @relation(fields: [mentorId], references: [id])
-  student         User          @relation("StudentBookings", fields: [studentId], references: [id])
-  payment         Payment?
+  // Phase 3 Slot Booking Details (selectedDay/selectedSlot kept for legacy bookings)
+  selectedDay       String?   @map("selected_day")
+  selectedSlot      String?   @map("selected_slot")
+  externalScheduled Boolean   @default(false) @map("external_scheduled")
+  paymentExpiresAt  DateTime? @map("payment_expires_at")
+  bookingNote       String?   @map("booking_note")
+  otp               String?
+  otpGeneratedAt    DateTime? @map("otp_generated_at")
+  otpVerified       Boolean   @default(false) @map("otp_verified")
+  rating            Int?
+  review            String?   @db.VarChar(300)
+  mentor            Mentor    @relation(fields: [mentorId], references: [id])
+  student           User      @relation("StudentBookings", fields: [studentId], references: [id])
+  payment           Payment?
 
   @@index([status, createdAt])
   @@index([status, updatedAt])

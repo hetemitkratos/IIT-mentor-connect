@@ -24,10 +24,9 @@ export async function expireBookingsIfNeeded(bookings: Booking[]) {
 
 
 export async function createBooking(
-  studentId: string,
-  mentorId: string,
-  selectedDay?: string,
-  selectedSlot?: string
+  studentId:   string,
+  mentorId:    string,
+  bookingNote?: string,
 ) {
   return prisma.$transaction(async (tx) => {
     // Integrity checks
@@ -46,11 +45,11 @@ export async function createBooking(
     })
 
     if (existing) {
-      // Clear the stale slot if it just expired
-      if (existing.status === 'payment_pending' && existing.paymentExpiresAt && new Date() > existing.paymentExpiresAt) {
+      // Clear the stale booking if its payment window expired
+      if (existing.paymentExpiresAt && new Date() > existing.paymentExpiresAt) {
         await tx.booking.update({
           where: { id: existing.id },
-          data: { status: 'expired' }
+          data:  { status: 'expired' },
         })
       } else {
         throw new Error('DUPLICATE_BOOKING')
@@ -63,16 +62,17 @@ export async function createBooking(
       data: {
         studentId,
         mentorId,
-        selectedDay: selectedDay ?? null,
-        selectedSlot: selectedSlot ?? null,
-        status: 'payment_pending',
-        paymentExpiresAt
+        status:           'payment_pending',
+        externalScheduled: true,   // student confirmed scheduling via Calendly embed
+        bookingNote:      bookingNote ?? null,
+        paymentExpiresAt,
       },
     })
     console.log('[BOOKING_CREATED]', { bookingId: booking.id, studentId, mentorId })
     return booking
   })
 }
+
 
 export async function getStudentBookings(
   studentId: string,

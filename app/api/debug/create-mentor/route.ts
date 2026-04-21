@@ -41,7 +41,7 @@ export async function GET() {
       year:         3,
       languages:    ['Hindi', 'English'],
       bio:          'I cracked JEE Advanced 2023 with AIR 142. I can help you with Physics and Maths strategy, time management, and mock test review. Happy to guide serious aspirants.',
-      calLink: 'https://cal.com/test-mentor/20min',
+      calendlyLink: 'https://calendly.com/test-mentor/30min',
     })
 
     return success({

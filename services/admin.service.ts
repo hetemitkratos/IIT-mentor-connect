@@ -32,13 +32,13 @@ export async function approveApplication(applicationId: string) {
     }),
     prisma.mentor.create({
       data: {
-        userId:    application.userId,
-        iit:       application.iit,
-        branch:    application.branch,
-        year:      application.year,
-        languages: application.languages,
-        bio:       application.bio,
-        calLink:   application.calLink,
+        userId:      application.userId,
+        iit:         application.iit,
+        branch:      application.branch,
+        year:        application.year,
+        languages:   application.languages,
+        bio:         application.bio,
+        calendlyLink: application.calLink,
       },
     }),
     prisma.user.update({

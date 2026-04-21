@@ -20,7 +20,7 @@ export interface BookingRow {
 interface Props {
   mentorName:        string
   mentorIit:         string
-  calLink:           string | null
+  calendlyLink:      string | null
   upcomingBookings:  BookingRow[]
   ongoingBookings:   BookingRow[]
   completedBookings: BookingRow[]
@@ -353,24 +353,26 @@ function CompletedRow({ b }: { b: BookingRow }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   CAL LINK SETTINGS CARD
+   CALENDLY SETTINGS CARD
 ───────────────────────────────────────────────────────────────── */
-function CalLinkSettings({ initialCalLink }: { initialCalLink: string | null }) {
+function CalendlySettings({ initialLink }: { initialLink: string | null }) {
   const router = useRouter()
-  const [calLink, setCalLink] = useState(initialCalLink ?? '')
+  const [link, setLink] = useState(initialLink ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+
+  const isValid = link.includes('calendly.com') || link.includes('cal.com')
 
   const handleSave = async () => {
     setSaving(true)
     setError(null)
     setSaved(false)
     try {
-      const res = await fetch('/api/mentor/update-cal-link', {
+      const res = await fetch('/api/mentor/update-calendly-link', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ calLink }),
+        body: JSON.stringify({ calendlyLink: link }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -390,29 +392,32 @@ function CalLinkSettings({ initialCalLink }: { initialCalLink: string | null }) 
     <div className="bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-6 mb-10">
       <div className="flex flex-col gap-4">
         <div>
-          <h2 className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#585f6c]">Scheduling Link</h2>
+          <h2 className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#585f6c]">Calendly Scheduling Link</h2>
           <p className="text-[#6b7280] text-[13px] leading-relaxed mt-1 max-w-lg">
-            Paste your Cal.com booking link. Students will use this to schedule their session before paying.
+            Paste your Calendly booking link. Students will schedule their session using the embedded calendar on your profile page.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 max-w-xl">
           <input
             type="url"
-            value={calLink}
-            onChange={e => { setCalLink(e.target.value); setSaved(false) }}
-            placeholder="https://cal.com/your-username/session"
+            value={link}
+            onChange={e => { setLink(e.target.value); setSaved(false) }}
+            placeholder="https://calendly.com/your-name/30min"
             className="flex-1 px-4 py-2.5 text-sm border border-[rgba(221,193,175,0.4)] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#f5820a]/30 text-[#1a1c1c] placeholder:text-[#9ca3af]"
           />
           <button
             onClick={handleSave}
-            disabled={saving || !calLink.trim()}
+            disabled={saving || !link.trim() || !isValid}
             className="px-5 py-2.5 bg-[#f5820a] text-white text-[13px] font-semibold rounded-full hover:bg-[#e07509] transition-colors shadow-sm disabled:opacity-50 shrink-0"
           >
             {saving ? 'Saving…' : 'Save Link'}
           </button>
         </div>
 
+        {!isValid && link.trim() && (
+          <p className="text-[12px] text-[#b45309]">Must be a calendly.com or cal.com link</p>
+        )}
         {error && <p className="text-[12px] text-[#ba1a1a]">{error}</p>}
         {saved && (
           <p className="text-[12px] text-[#16a34a] flex items-center gap-1.5">
@@ -423,12 +428,12 @@ function CalLinkSettings({ initialCalLink }: { initialCalLink: string | null }) 
           </p>
         )}
 
-        {calLink && calLink.startsWith('https://cal.com/') && (
+        {link && isValid && (
           <div className="flex items-center gap-2 mt-1">
             <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" />
             <span className="text-[12px] text-[#16a34a] font-medium">Scheduling link active</span>
             <a
-              href={calLink}
+              href={link}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[12px] text-[#9ca3af] hover:text-[#585f6c] underline transition-colors ml-1"
@@ -447,7 +452,7 @@ function CalLinkSettings({ initialCalLink }: { initialCalLink: string | null }) 
 ───────────────────────────────────────────────────────────────── */
 export default function MentorDashboardContent({
   mentorName, mentorIit,
-  calLink,
+  calendlyLink,
   upcomingBookings, ongoingBookings,
   completedBookings, cancelledBookings,
   stats, bio,
@@ -497,7 +502,7 @@ export default function MentorDashboardContent({
         </div>
 
         {/* ── Cal.com Scheduling Link ──────────────────────────────── */}
-        <CalLinkSettings initialCalLink={calLink} />
+        <CalendlySettings initialLink={calendlyLink} />
 
         {/* ── ONGOING SESSIONS ────────────────────────────────────── */}
         {ongoingBookings.length > 0 && (

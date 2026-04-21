@@ -13,7 +13,7 @@ interface MentorCardProps {
     year:         number
     languages:    string[]
     bio:          string
-    calLink?: string
+    calendlyLink?: string | null
     profileImage: string | null
     user:         { name: string | null; image: string | null }
   }
@@ -32,9 +32,8 @@ export function MentorCard({ mentor, onSelect }: MentorCardProps) {
   const initials     = displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 
   const { startBookingFlow, isProcessing, step, flowError } = useBookingFlow({
-    mentorId: mentor.id,
+    mentorId:   mentor.id,
     mentorName: displayName,
-    calLink: mentor.calLink,
   })
 
   return (
@@ -125,7 +124,7 @@ export function MentorCard({ mentor, onSelect }: MentorCardProps) {
             {isProcessing ? (
               <>
                 <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                {step === 'redirecting' ? 'Going...' : 'Loading'}
+                {'Loading…'}
               </>
             ) : (
               <>

@@ -3,24 +3,25 @@ import { requireAuth } from '@/lib/session'
 import { error, success } from '@/lib/api-response'
 import { prisma } from '@/lib/prisma'
 
-const LINK_REGEX = /^https:\/\/(calendly\.com|cal\.com)\/.+/
+const CALENDLY_REGEX = /^https:\/\/(calendly\.com|cal\.com)\/.+/
 
 /**
- * PATCH /api/mentor/update-cal-link  (legacy — kept for backward compat)
- * Prefer /api/mentor/update-calendly-link for new clients.
+ * PATCH /api/mentor/update-calendly-link
+ * Saves a mentor's Calendly booking link to the DB.
  */
 export async function PATCH(req: NextRequest) {
   const { user, response } = await requireAuth()
   if (response) return response
 
-  if (user!.role !== 'mentor') return error('Unauthorized', 403)
+  if (user!.role !== 'mentor') {
+    return error('Unauthorized', 403)
+  }
 
   const body = await req.json()
-  // Accept both old calLink and new calendlyLink payloads
-  const link = body.calendlyLink ?? body.calLink
+  const { calendlyLink } = body
 
-  if (!link || typeof link !== 'string' || !LINK_REGEX.test(link.trim())) {
-    return error('Please enter a valid Calendly or Cal.com link', 400)
+  if (!calendlyLink || typeof calendlyLink !== 'string' || !CALENDLY_REGEX.test(calendlyLink.trim())) {
+    return error('Please enter a valid Calendly link (e.g. https://calendly.com/your-name/30min)', 400)
   }
 
   const mentor = await prisma.mentor.findUnique({ where: { userId: user!.id }, select: { id: true } })
@@ -28,9 +29,9 @@ export async function PATCH(req: NextRequest) {
 
   await prisma.mentor.update({
     where: { id: mentor.id },
-    data: { calendlyLink: link.trim() },
+    data: { calendlyLink: calendlyLink.trim() },
   })
 
+  console.log(`[CALENDLY_LINK_UPDATED] mentor ${mentor.id} → ${calendlyLink.trim()}`)
   return success({ message: 'Calendly link saved successfully' })
 }
-

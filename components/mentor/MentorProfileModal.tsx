@@ -17,7 +17,7 @@ interface MentorData {
   year:         number
   languages:    string[]
   bio:          string
-  calLink?: string
+  calendlyLink?: string | null
   profileImage: string | null
   user:         { name: string | null; image: string | null }
   bookings?:    { review: string | null; rating: number | null; updatedAt: Date; student: { name: string | null } }[]
@@ -53,9 +53,8 @@ export function MentorProfileModal({ mentor, onClose }: MentorProfileModalProps)
   const stats = { rank: 'AIR 847', sessions: 24 }
 
   const { startBookingFlow, isProcessing, step, flowError } = useBookingFlow({
-    mentorId: mentor.id,
+    mentorId:   mentor.id,
     mentorName: displayName,
-    calLink: mentor.calLink,
   })
 
   return (
@@ -155,7 +154,7 @@ export function MentorProfileModal({ mentor, onClose }: MentorProfileModalProps)
                     <div className="w-8 h-8 rounded-full bg-[#f1f5f9] flex items-center justify-center shrink-0">
                       <svg className="w-4 h-4 text-[#64748b]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
-                    Pick time on Cal.com
+                    Pick time on Calendly
                   </div>
                 </div>
               </div>
@@ -239,7 +238,7 @@ export function MentorProfileModal({ mentor, onClose }: MentorProfileModalProps)
                     {isProcessing ? (
                       <>
                         <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        {step === 'redirecting' ? 'Going to Cal.com...' : 'Preparing Session...'}
+                        Preparing Session...
                       </>
                     ) : (
                       <>

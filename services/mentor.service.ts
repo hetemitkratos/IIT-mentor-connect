@@ -74,7 +74,7 @@ export async function getMentorBySlug(slug: string) {
       languages: true,
       bio: true,
       profileImage: true,
-      calLink: true,
+      calendlyLink: true,
       user: { select: { name: true, image: true } },
     },
   })
@@ -87,14 +87,14 @@ export async function getMentorByUserId(userId: string) {
 export async function getMentorAvailability(mentorId: string) {
   const mentor = await prisma.mentor.findUnique({
     where: { id: mentorId },
-    select: { id: true, isActive: true, calLink: true, user: { select: { name: true } } },
+    select: { id: true, isActive: true, calendlyLink: true, user: { select: { name: true } } },
   })
   return mentor
 }
 
 export async function updateMentorProfile(
   userId: string,
-  data: { bio?: string; languages?: string[]; calLink?: string; year?: number }
+  data: { bio?: string; languages?: string[]; calendlyLink?: string; year?: number }
 ) {
   return prisma.mentor.update({
     where: { userId },
@@ -124,7 +124,7 @@ export interface CreateMentorInput {
   year:         number
   languages:    string[]
   bio:          string
-  calLink:       string
+  calendlyLink?: string
   profileImage?: string
 }
 
@@ -146,7 +146,7 @@ export async function createMentor(input: CreateMentorInput) {
       year:         input.year,
       languages:    input.languages,
       bio:          input.bio,
-      calLink:       input.calLink,
+      calendlyLink: input.calendlyLink,
       profileImage: input.profileImage,
     },
     include: { user: { select: { name: true, image: true } } },
