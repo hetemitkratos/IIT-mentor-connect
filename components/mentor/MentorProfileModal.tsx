@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { useBookingFlow } from '@/hooks/useBookingFlow'
 
 const YEAR_LABEL: Record<number, string> = {
   1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year',
@@ -12,6 +11,7 @@ const YEAR_LABEL: Record<number, string> = {
 
 interface MentorData {
   id:           string
+  slug:         string | null
   iit:          string
   branch:       string
   year:         number
@@ -52,10 +52,11 @@ export function MentorProfileModal({ mentor, onClose }: MentorProfileModalProps)
   // Mock data as per Figma design (we don't have reviews schema yet)
   const stats = { rank: 'AIR 847', sessions: 24 }
 
-  const { startBookingFlow, isProcessing, step, flowError } = useBookingFlow({
-    mentorId:   mentor.id,
-    mentorName: displayName,
-  })
+  const goToProfile = () => {
+    const dest = mentor.slug ? `/mentors/${mentor.slug}` : `/mentors/${mentor.id}`
+    onClose()
+    router.push(dest)
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 pb-20 sm:pb-6 pointer-events-auto">
@@ -229,31 +230,14 @@ export function MentorProfileModal({ mentor, onClose }: MentorProfileModalProps)
 
                 <div className="flex flex-col gap-3">
                   <button
-                    onClick={startBookingFlow}
-                    disabled={isProcessing}
-                    className={`w-full transition-colors font-bold h-[52px] rounded-full shadow-[0px_10px_15px_-3px_rgba(249,115,22,0.2)] flex items-center justify-center gap-2 font-['Manrope'] active:scale-95 ${
-                      isProcessing ? 'bg-orange-400 text-white cursor-not-allowed' : 'bg-[#f5820a] hover:bg-[#e07509] text-white'
-                    }`}
+                    onClick={goToProfile}
+                    className="w-full bg-[#f5820a] hover:bg-[#e07509] text-white transition-colors font-bold h-[52px] rounded-full shadow-[0px_10px_15px_-3px_rgba(249,115,22,0.2)] flex items-center justify-center gap-2 font-['Manrope'] active:scale-95"
                   >
-                    {isProcessing ? (
-                      <>
-                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        Preparing Session...
-                      </>
-                    ) : (
-                      <>
-                        Book a Session
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                      </>
-                    )}
+                    Book a Session
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                   </button>
-                  {flowError && (
-                    <p className="text-center text-red-500 text-sm font-semibold mt-1">
-                      {flowError.message}
-                    </p>
-                  )}
                   <p className="text-center text-[#564335] text-[11px] font-['Manrope'] leading-tight px-4 mt-2">
-                    You&apos;ll pick your slot and pay on Cal.com. All sessions are recorded for safety.
+                    Schedule via Calendly, then pay to confirm. All sessions are recorded for safety.
                   </p>
                 </div>
 

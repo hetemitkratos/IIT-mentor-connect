@@ -3,11 +3,11 @@
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { useBookingFlow } from '@/hooks/useBookingFlow'
 
 interface MentorCardProps {
   mentor: {
     id:           string
+    slug:         string | null
     iit:          string
     branch:       string
     year:         number
@@ -25,16 +25,18 @@ const YEAR_LABEL: Record<number, string> = {
 }
 
 export function MentorCard({ mentor, onSelect }: MentorCardProps) {
-  const router       = useRouter()
-  const displayName  = mentor.user.name ?? 'IIT Mentor'
-  const avatarSrc    = mentor.profileImage ?? mentor.user.image
-  const bioExcerpt   = mentor.bio.length > 90 ? mentor.bio.slice(0, 87) + '…' : mentor.bio
-  const initials     = displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+  const router      = useRouter()
+  const displayName = mentor.user.name ?? 'IIT Mentor'
+  const avatarSrc   = mentor.profileImage ?? mentor.user.image
+  const bioExcerpt  = mentor.bio.length > 90 ? mentor.bio.slice(0, 87) + '…' : mentor.bio
+  const initials    = displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 
-  const { startBookingFlow, isProcessing, step, flowError } = useBookingFlow({
-    mentorId:   mentor.id,
-    mentorName: displayName,
-  })
+  /** Navigate to the full mentor profile page which contains the booking UI */
+  const handleBook = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const dest = mentor.slug ? `/mentors/${mentor.slug}` : `/mentors/${mentor.id}`
+    router.push(dest)
+  }
 
   return (
     <motion.div
@@ -68,7 +70,7 @@ export function MentorCard({ mentor, onSelect }: MentorCardProps) {
                 {initials}
               </div>
             )}
-            
+
             {/* Tiny IIT Badge overlay */}
             <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white flex items-center justify-center p-[2px] shadow-sm border border-gray-100">
               <div className="w-full h-full rounded-full bg-[#f1f5f9] flex items-center justify-center text-[8px] font-bold text-[#334155]">
@@ -76,7 +78,7 @@ export function MentorCard({ mentor, onSelect }: MentorCardProps) {
               </div>
             </div>
           </div>
-          
+
           <div className="flex-1 min-w-0 pt-1">
             <h3 className="font-semibold text-lg text-[#0f172a] truncate font-['Inter'] leading-tight">
               {displayName}
@@ -108,39 +110,20 @@ export function MentorCard({ mentor, onSelect }: MentorCardProps) {
           </p>
         </div>
 
-        {/* Footer info - Action */}
+        {/* Footer — rate + CTA */}
         <div className="mt-auto pt-4 border-t border-[#f1f5f9] flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-xs text-[#64748b] font-medium uppercase tracking-wider">Session Rate</span>
             <span className="text-[#0f172a] font-bold">₹150 <span className="text-xs font-normal text-[#64748b]">/ 20m</span></span>
           </div>
           <button
-            onClick={startBookingFlow}
-            disabled={isProcessing}
-            className={`transition-colors text-white text-sm font-semibold py-2 px-4 rounded-full flex items-center justify-center gap-1.5 shadow-sm active:scale-95 ${
-              isProcessing ? 'bg-orange-400 cursor-not-allowed' : 'bg-[#f5820a] hover:bg-[#e07509]'
-            }`}
+            onClick={handleBook}
+            className="transition-colors text-white text-sm font-semibold py-2 px-4 rounded-full flex items-center justify-center gap-1.5 shadow-sm active:scale-95 bg-[#f5820a] hover:bg-[#e07509]"
+            aria-label={`Book a session with ${displayName}`}
           >
-            {isProcessing ? (
-              <>
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                {'Loading…'}
-              </>
-            ) : (
-              <>
-                Book <ArrowRightIcon />
-              </>
-            )}
+            Book <ArrowRightIcon />
           </button>
         </div>
-        
-        {flowError && (
-          <div className="absolute bottom-16 left-0 right-0 px-5">
-            <div className="bg-red-50 text-red-600 text-[11px] font-semibold py-1.5 px-3 rounded-md border border-red-100 shadow-sm text-center">
-              {flowError.message}
-            </div>
-          </div>
-        )}
 
       </div>
     </motion.div>

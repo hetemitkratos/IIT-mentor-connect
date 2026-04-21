@@ -35,25 +35,31 @@ export async function createBooking(
     if (mentor.userId === studentId) throw new Error('INVALID_BOOKING')
     if (!mentor.isActive) throw new Error('MENTOR_INACTIVE')
 
-    // Student anti-spam: one active booking per mentor at a time
+    // Anti-spam: block real active bookings, clean up expired ones
     const existing = await tx.booking.findFirst({
       where: {
-        studentId,
         mentorId,
-        status: { notIn: ['cancelled', 'expired', 'completed'] },
+        studentId,
+        // Only block genuinely active bookings (pending payment or already scheduled)
+        status: { in: [BookingStatus.payment_pending, BookingStatus.scheduled] },
       },
     })
 
     if (existing) {
-      // Clear the stale booking if its payment window expired
-      if (existing.paymentExpiresAt && new Date() > existing.paymentExpiresAt) {
-        await tx.booking.update({
-          where: { id: existing.id },
-          data:  { status: 'expired' },
-        })
-      } else {
+      const isExpired =
+        existing.status === BookingStatus.payment_pending &&
+        existing.paymentExpiresAt !== null &&
+        new Date(existing.paymentExpiresAt) < new Date()
+
+      if (!isExpired) {
         throw new Error('DUPLICATE_BOOKING')
       }
+
+      // Expired payment window — clean it up so the student can rebook
+      await tx.booking.update({
+        where: { id: existing.id },
+        data:  { status: 'expired' },
+      })
     }
 
     const paymentExpiresAt = new Date(Date.now() + 30 * 60 * 1000)

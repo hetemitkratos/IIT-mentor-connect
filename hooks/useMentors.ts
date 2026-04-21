@@ -10,16 +10,17 @@ export interface UseMentorsParams extends MentorFilters {
 
 export interface MentorListResponse {
   mentors: Array<{
-    id: string
-    iit: string
-    branch: string
-    year: number
-    languages: string[]
-    bio: string
+    id:           string
+    slug:         string | null
+    iit:          string
+    branch:       string
+    year:         number
+    languages:    string[]
+    bio:          string
     calendlyLink: string | null
     profileImage: string | null
-    isActive: boolean
-    createdAt: string
+    isActive:     boolean
+    createdAt:    string
     user: { name: string | null; image: string | null }
   }>
   total:      number

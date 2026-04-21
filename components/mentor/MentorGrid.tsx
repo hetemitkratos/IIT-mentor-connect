@@ -5,6 +5,7 @@ import { MentorCardSkeleton } from './MentorCardSkeleton'
 
 interface MentorData {
   id:           string
+  slug:         string | null
   iit:          string
   branch:       string
   year:         number
@@ -75,8 +76,7 @@ export function MentorGrid({
             key={mentor.id} 
             mentor={mentor} 
             onSelect={() => {
-              // fallback to mentor.id if slug is somehow missing for old docs
-              router.push(`/mentors/${(mentor as any).slug || mentor.id}`)
+              router.push(`/mentors/${mentor.slug ?? mentor.id}`)
             }} 
           />
         ))}
