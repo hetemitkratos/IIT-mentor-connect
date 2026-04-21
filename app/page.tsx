@@ -327,8 +327,8 @@ export default function LandingPage() {
           />
           <StepCard
             num="2"
-            title="Book A Slot"
-            desc="Pick a convenient time from their availability. Pay securely online."
+            title="Select a Time"
+            desc="Use the mentor's Calendly calendar to pick a convenient slot. Then confirm and pay securely."
             icon={<CalendarIcon />}
           />
           <StepCard
