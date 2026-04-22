@@ -23,10 +23,12 @@ const loadRazorpay = () => {
 
 export default function CompletePaymentButton({ bookingId, sessionToken }: { bookingId: string; sessionToken: string }) {
   const [loading, setLoading] = useState(false)
+  const [errorUI, setErrorUI] = useState<string | null>(null)
 
   const handlePayment = async () => {
     try {
       setLoading(true);
+      setErrorUI(null);
 
       if (
         window.location.hostname !== "candidconversations.in" &&
@@ -122,9 +124,14 @@ export default function CompletePaymentButton({ bookingId, sessionToken }: { boo
       // Step 4: Open Razorpay
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
-    } catch (err: any) {
-      console.error("[PAYMENT_ERROR]", err)
-      alert(err.message || "Payment failed")
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        if (err.message.includes('Booking not confirmed yet')) {
+          setErrorUI('We couldn’t confirm your booking yet.\n\nPlease wait a few seconds and try again.')
+        } else {
+          alert(err.message)
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -155,6 +162,12 @@ export default function CompletePaymentButton({ bookingId, sessionToken }: { boo
           </>
         )}
       </button>
+
+      {errorUI && (
+        <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+          <p className="text-sm font-semibold text-red-800 whitespace-pre-wrap leading-relaxed">{errorUI}</p>
+        </div>
+      )}
     </div>
   )
 }

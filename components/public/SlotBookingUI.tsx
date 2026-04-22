@@ -27,42 +27,42 @@ interface SlotBookingUIProps {
 export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBookingUIProps) {
   const router = useRouter()
 
-  const [phase, setPhase] = useState<'embed' | 'creating' | 'waiting' | 'confirmed' | 'timeout'>('embed')
+  const [phase, setPhase] = useState<'embed' | 'creating' | 'waiting' | 'delayed' | 'fallback' | 'confirmed'>('embed')
   const [bookingId, setBookingId] = useState<string | null>(null)
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [scheduledAt, setScheduledAt] = useState<string | null>(null)
   const [meetingUrl, setMeetingUrl] = useState<string | null>(null)
   const [attendeeEmail, setAttendeeEmail] = useState<string | null>(null)
-  const [manualOverride, setManualOverride] = useState(false)
   const [justConfirmed, setJustConfirmed] = useState(false)
-  const [showStrongWarning, setShowStrongWarning] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pollStartRef  = useRef<number>(0)
-
-  // ── Poll for webhook data ─────────────────────────────────────────────────
+  // ── Sequence Timers ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'waiting' || !bookingId) return
+    if (!bookingId) return
+    if (scheduledAt) {
+      setPhase('confirmed')
+      return
+    }
 
-    pollStartRef.current = Date.now()
+    setPhase('waiting')
 
-    intervalRef.current = setInterval(async () => {
-      // ── Timeout guard ──────────────────────────────────────────────────────
-      // If Cal.com webhook hasn't arrived after 3 minutes, stop spinning and
-      // let the user proceed manually. The webhook will still attach data
-      // asynchronously — it just may not be reflected live.
-      if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
-        setPhase('timeout')
-        if (intervalRef.current) clearInterval(intervalRef.current)
-        console.warn('[POLL] Timeout waiting for Cal.com webhook — enabling manual proceed')
-        return
-      }
+    const t1 = setTimeout(() => setPhase('delayed'), 5000)
+    const t2 = setTimeout(() => setPhase('fallback'), 12000)
 
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, [bookingId, scheduledAt])
+
+  // ── Polling logic ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!bookingId || scheduledAt) return
+
+    const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/bookings/${bookingId}`)
         if (!res.ok) return
-
         const json = await res.json()
         const data = json?.data
 
@@ -73,30 +73,15 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
           setPhase('confirmed')
           setJustConfirmed(true)
           setTimeout(() => setJustConfirmed(false), 3000)
-          if (intervalRef.current) clearInterval(intervalRef.current)
+          clearInterval(interval)
         }
       } catch {
-        // silent — keep polling until timeout
+        // silent
       }
     }, 3000)
 
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [phase, bookingId])
-
-  // ── 10 min Soft Limit Warning ─────────────────────────────────────────────
-  useEffect(() => {
-    if (phase !== 'timeout') return
-    const id = setInterval(() => {
-      // 10 minutes = 10 * 60 * 1000
-      if (Date.now() - pollStartRef.current > 10 * 60 * 1000) {
-        setShowStrongWarning(true)
-        clearInterval(id)
-      }
-    }, 5000)
-    return () => clearInterval(id)
-  }, [phase])
+    return () => clearInterval(interval)
+  }, [bookingId, scheduledAt])
 
   // ── no Cal.com link ───────────────────────────────────────────────────────
   if (!calLink) {
@@ -229,27 +214,44 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
           </button>
         )}
 
-        {/* PHASE: waiting — polling for webhook */}
+        {/* PHASE: waiting (0-5s) */}
         {phase === 'waiting' && (
-          <div className="space-y-4">
+          <div className="space-y-4 transition-all duration-500">
             <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-5 py-4">
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
                 <p className="text-sm font-medium text-neutral-800">Waiting for booking confirmation…</p>
               </div>
-              <p className="text-xs text-neutral-500 pl-5">
-                Cal.com is confirming your slot. This usually takes a few seconds.
-              </p>
             </div>
             <button
-              onClick={handlePay}
-              className="w-full py-3.5 text-[15px] font-medium rounded-xl bg-neutral-200 text-neutral-500 cursor-not-allowed flex items-center justify-center gap-2"
               disabled
+              className="w-full py-3.5 text-[15px] font-medium rounded-xl bg-neutral-200 text-neutral-500 cursor-not-allowed flex items-center justify-center gap-2"
             >
               Secure your session — Pay ₹150
             </button>
-            <p className="text-xs text-neutral-500 text-center transition-all duration-300">
+            <p className="text-xs text-neutral-500 text-center">
               Waiting for booking confirmation…
+            </p>
+          </div>
+        )}
+
+        {/* PHASE: delayed (5-12s) */}
+        {phase === 'delayed' && (
+          <div className="space-y-4 transition-all duration-500">
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <p className="text-sm font-medium text-neutral-800">Confirming your booking — this may take a few seconds</p>
+              </div>
+            </div>
+            <button
+              disabled
+              className="w-full py-3.5 text-[15px] font-medium rounded-xl bg-neutral-200 text-neutral-500 cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              Secure your session — Pay ₹150
+            </button>
+            <p className="text-xs text-neutral-500 text-center">
+              Confirming your booking — this may take a few seconds
             </p>
           </div>
         )}
@@ -264,7 +266,7 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
                 </svg>
                 <div>
                   <p className="text-sm font-semibold text-green-800 transition-all duration-300">
-                    {justConfirmed ? '✓ Booking confirmed just now' : 'Time confirmed — continue to payment'}
+                    {justConfirmed ? '✓ Booking confirmed just now' : '✓ Booking confirmed — continue to payment'}
                   </p>
                   {scheduledAt && (
                     <p className="text-xs text-green-700 mt-0.5">
@@ -297,49 +299,26 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
           </div>
         )}
 
-        {/* PHASE: timeout — webhook didn't arrive in time, unlock manual proceed */}
-        {phase === 'timeout' && (
-          <div className="space-y-4">
+        {/* PHASE: fallback (12s+) */}
+        {phase === 'fallback' && (
+          <div className="space-y-4 transition-all duration-500 flex-1">
             <div className="rounded-xl border border-neutral-200 bg-[#fafafa] px-5 py-4">
-              <p className="text-sm font-semibold text-neutral-900 mb-2">We couldn&apos;t confirm automatically</p>
-              <p className="text-[13px] text-neutral-600 mb-4 tracking-[-0.01em] leading-relaxed">
-                If you have already selected a time, you can continue. Otherwise, please complete your booking first.
+              <p className="text-sm font-semibold text-neutral-900 mb-1">Still confirming your booking…</p>
+              <p className="text-[13px] text-neutral-600 tracking-[-0.01em] leading-relaxed">
+                You can proceed — we’ll verify it before payment.
               </p>
-              <label className="flex items-start gap-3 cursor-pointer select-none">
-                <input 
-                  type="checkbox" 
-                  className="mt-0.5 rounded border-neutral-300 text-[#f5820a] focus:ring-[#f5820a]"
-                  onChange={(e) => setManualOverride(e.target.checked)} 
-                  checked={manualOverride}
-                />
-                <span className="text-[13px] font-medium text-neutral-700 block -mt-0.5 leading-snug">I have already selected a time in the calendar</span>
-              </label>
             </div>
             
-            {showStrongWarning && manualOverride && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4">
-                <p className="text-sm font-semibold text-red-800 mb-1">Warning: Payment may fail</p>
-                <p className="text-xs text-red-700">
-                  It has been over 10 minutes and Cal.com has not confirmed the slot. If payment fails, your selected time may have been taken. Please refresh and try booking a new slot.
-                </p>
-              </div>
-            )}
-
             <button
               onClick={handlePay}
-              disabled={!manualOverride}
-              className={`w-full py-3.5 text-[15px] font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 ${
-                manualOverride
-                  ? 'bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-sm active:scale-[0.98]'
-                  : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
-              }`}
+              className="w-full py-3.5 text-[15px] font-semibold rounded-xl bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-sm active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
             >
               Continue to Payment
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </button>
-            <p className="text-xs text-neutral-500 text-center flex items-center justify-center gap-1.5 transition-all duration-300">
+            <p className="text-xs text-neutral-500 text-center flex items-center justify-center gap-1.5">
               <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
               </svg>
