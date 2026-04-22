@@ -189,6 +189,7 @@ model CalWebhookBuffer {
   id              String    @id @default(cuid())
   externalEventId String    @unique @map("external_event_id")
   attendeeEmail   String    @map("attendee_email")
+  mentorId        String?   @map("mentor_id")
   scheduledAt     DateTime  @map("scheduled_at")
   meetingUrl      String?   @map("meeting_url")
   processed       Boolean   @default(false)

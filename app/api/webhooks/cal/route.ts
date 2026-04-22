@@ -4,14 +4,17 @@ import { BookingStatus } from '@prisma/client'
 /**
  * POST /api/webhooks/cal
  *
- * Race-condition-safe Cal.com webhook handler.
+ * Race-condition-safe, mentor-scoped Cal.com webhook handler.
  *
- * Flow:
- *  1. Always upsert into CalWebhookBuffer (idempotent store).
- *  2. Attempt to find and link to an existing payment_pending booking.
- *  3. If no booking exists yet, the buffer remains unprocessed.
- *     When the student creates a booking (booking.service.ts), it checks
- *     the buffer and links retroactively.
+ * Matching strategy:
+ *  - Attendee email  → student User record → studentId
+ *  - Organizer email → mentor User record  → mentorId
+ *  - Booking lookup  → studentId + mentorId (scoped, not just email)
+ *
+ * Race condition handling:
+ *  1. Always upsert CalWebhookBuffer first (idempotent).
+ *  2. Attempt immediate link. If booking doesn't exist yet, it will be
+ *     linked retroactively inside createBooking() in booking.service.ts.
  *
  * Register in Cal.com → Settings → Webhooks:
  *   URL: https://candidconversations.in/api/webhooks/cal
@@ -25,9 +28,9 @@ export async function POST(req: Request) {
     return new Response('Invalid JSON', { status: 400 })
   }
 
-  const event = body as Record<string, unknown>
+  const event    = body as Record<string, unknown>
   const triggerEvent = event.triggerEvent as string | undefined
-  const payload = event.payload as Record<string, unknown> | undefined
+  const payload  = event.payload   as Record<string, unknown> | undefined
 
   console.log('[CAL_WEBHOOK] Received event:', triggerEvent)
 
@@ -38,15 +41,19 @@ export async function POST(req: Request) {
   // ── BOOKING_CREATED ──────────────────────────────────────────────────────
   if (triggerEvent === 'BOOKING_CREATED') {
     try {
-      const uid = payload.uid as string | undefined
+      const uid       = payload.uid       as string | undefined
       const attendees = payload.attendees as Array<{ email: string; name: string }> | undefined
       const startTime = payload.startTime as string | undefined
 
-      // Extract meeting URL from multiple possible locations in Cal.com payload
+      // Extract organizer (the mentor who owns the Cal.com event)
+      const organizer      = payload.organizer as { email?: string } | undefined
+      const organizerEmail = organizer?.email
+
+      // Extract meeting URL from multiple possible Cal.com payload locations
       const meetingUrl = (
-        (payload.metadata as Record<string, unknown>)?.videoCallUrl ??
+        (payload.metadata  as Record<string, unknown>)?.videoCallUrl     ??
         ((payload.responses as Record<string, unknown>)?.location as Record<string, unknown>)?.value ??
-        (payload as Record<string, unknown>).videoCallUrl ??
+        (payload            as Record<string, unknown>).videoCallUrl     ??
         null
       ) as string | null
 
@@ -57,50 +64,69 @@ export async function POST(req: Request) {
         return new Response('ok', { status: 200 })
       }
 
-      console.log('[CAL_WEBHOOK] BOOKING_CREATED for', attendeeEmail, 'at', startTime)
+      console.log('[CAL_WEBHOOK] BOOKING_CREATED — attendee:', attendeeEmail, '| organizer:', organizerEmail ?? 'unknown')
 
-      // ── Step 1: Upsert into buffer (idempotent — handles retries) ──────────
+      // ── Resolve mentorId from organizer email ──────────────────────────────
+      let mentorId: string | null = null
+      if (organizerEmail) {
+        const mentorUser = await prisma.user.findUnique({
+          where:  { email: organizerEmail },
+          select: { mentor: { select: { id: true } } },
+        })
+        mentorId = mentorUser?.mentor?.id ?? null
+      }
+
+      if (!mentorId) {
+        console.warn('[CAL_WEBHOOK] Could not resolve mentorId from organizer email:', organizerEmail)
+        // Still continue — partial data is better than nothing
+      }
+
+      // ── Step 1: Upsert into buffer (idempotent — handles Cal.com retries) ──
       await prisma.calWebhookBuffer.upsert({
-        where: { externalEventId: uid },
-        update: {}, // Already stored — don't overwrite
+        where:  { externalEventId: uid },
+        update: {},   // Already stored on a prior retry — don't overwrite
         create: {
           externalEventId: uid,
           attendeeEmail,
+          mentorId,         // may be null if organizer email unresolved
           scheduledAt: new Date(startTime),
           meetingUrl,
           processed: false,
         },
       })
 
-      console.log('[CAL_WEBHOOK] Buffered event', uid)
+      console.log('[CAL_WEBHOOK] Buffered event', uid, '| mentorId:', mentorId)
 
-      // ── Step 2: Try to link to an existing booking ─────────────────────────
+      // ── Step 2: Resolve student ────────────────────────────────────────────
       const user = await prisma.user.findUnique({
-        where: { email: attendeeEmail },
+        where:  { email: attendeeEmail },
         select: { id: true },
       })
 
       if (!user) {
-        console.warn('[CAL_WEBHOOK] No user found for email:', attendeeEmail, '— buffered for later')
+        console.warn('[CAL_WEBHOOK] No user for attendee email:', attendeeEmail, '— will link on booking creation')
         return new Response('ok', { status: 200 })
       }
 
-      // Most recent payment_pending booking for this student, not yet webhook-linked
+      // ── Step 3: Find matching booking — scoped by studentId + mentorId ─────
+      // mentorId scoping prevents a user who books two mentors from getting
+      // webhook data attached to the wrong booking.
       const booking = await prisma.booking.findFirst({
         where: {
-          studentId:      user.id,
-          status:         BookingStatus.payment_pending,
-          scheduledAt:    null, // not yet linked
+          studentId:   user.id,
+          ...(mentorId ? { mentorId } : {}),
+          status:      BookingStatus.payment_pending,
+          scheduledAt: null,   // not yet webhook-linked
         },
         orderBy: { createdAt: 'desc' },
       })
 
       if (!booking) {
-        console.warn('[CAL_WEBHOOK] No payment_pending booking found for', attendeeEmail, '— buffered, will link on booking creation')
+        console.warn('[CAL_WEBHOOK] No matching payment_pending booking — buffered for retroactive attach')
         return new Response('ok', { status: 200 })
       }
 
-      // ── Step 3: Link to booking + mark buffer processed ────────────────────
+      // ── Step 4: Link + mark buffer processed (atomic) ─────────────────────
       await prisma.$transaction([
         prisma.booking.update({
           where: { id: booking.id },
@@ -113,11 +139,11 @@ export async function POST(req: Request) {
         }),
         prisma.calWebhookBuffer.update({
           where: { externalEventId: uid },
-          data: { processed: true },
+          data:  { processed: true },
         }),
       ])
 
-      console.log(`[CAL_WEBHOOK] Linked booking ${booking.id} → scheduledAt ${startTime}`)
+      console.log(`[CAL_WEBHOOK] ✓ Linked booking ${booking.id} (mentor: ${mentorId}) → scheduledAt ${startTime}`)
     } catch (err) {
       console.error('[CAL_WEBHOOK] Error processing BOOKING_CREATED:', err)
     }
@@ -138,7 +164,7 @@ export async function POST(req: Request) {
       if (booking) {
         await prisma.booking.update({
           where: { id: booking.id },
-          data: { status: BookingStatus.cancelled },
+          data:  { status: BookingStatus.cancelled },
         })
         console.log(`[CAL_WEBHOOK] Booking ${booking.id} cancelled via webhook`)
       }

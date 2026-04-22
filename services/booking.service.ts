@@ -79,11 +79,14 @@ export async function createBooking(
     })
 
     // ── Retroactive webhook attach ─────────────────────────────────────────
-    // If webhook arrived BEFORE booking was created, link the buffered data now
+    // If webhook arrived BEFORE booking was created, link the buffered data now.
+    // Scope by BOTH attendeeEmail AND mentorId — prevents cross-mentor mismatch
+    // when a student has pending bookings with multiple mentors simultaneously.
     if (student?.email) {
       const buffered = await tx.calWebhookBuffer.findFirst({
         where: {
           attendeeEmail: student.email,
+          mentorId,        // ← critical: scope to the specific mentor being booked
           processed:     false,
         },
         orderBy: { createdAt: 'desc' },

@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
+/** Maximum time to wait for Cal.com webhook before falling back to manual proceed */
+const POLL_TIMEOUT_MS = 3 * 60 * 1000 // 3 minutes
+
 interface SlotBookingUIProps {
   mentorId:   string
   mentorName: string
@@ -24,20 +27,34 @@ interface SlotBookingUIProps {
 export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBookingUIProps) {
   const router = useRouter()
 
-  const [phase, setPhase] = useState<'embed' | 'creating' | 'waiting' | 'confirmed'>('embed')
+  const [phase, setPhase] = useState<'embed' | 'creating' | 'waiting' | 'confirmed' | 'timeout'>('embed')
   const [bookingId, setBookingId] = useState<string | null>(null)
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [scheduledAt, setScheduledAt] = useState<string | null>(null)
   const [meetingUrl, setMeetingUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollStartRef  = useRef<number>(0)
 
   // ── Poll for webhook data ─────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== 'waiting' || !bookingId) return
 
+    pollStartRef.current = Date.now()
+
     intervalRef.current = setInterval(async () => {
+      // ── Timeout guard ──────────────────────────────────────────────────────
+      // If Cal.com webhook hasn't arrived after 3 minutes, stop spinning and
+      // let the user proceed manually. The webhook will still attach data
+      // asynchronously — it just may not be reflected live.
+      if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
+        setPhase('timeout')
+        if (intervalRef.current) clearInterval(intervalRef.current)
+        console.warn('[POLL] Timeout waiting for Cal.com webhook — enabling manual proceed')
+        return
+      }
+
       try {
         const res = await fetch(`/api/bookings/${bookingId}`)
         if (!res.ok) return
@@ -52,7 +69,7 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
           if (intervalRef.current) clearInterval(intervalRef.current)
         }
       } catch {
-        // silent — keep polling
+        // silent — keep polling until timeout
       }
     }, 3000)
 
@@ -238,6 +255,28 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
               className="w-full py-3.5 text-[15px] font-semibold rounded-xl bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-[0_4px_16px_rgba(245,130,10,0.35)] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
             >
               Secure your session — Pay ₹150
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+            <p className="text-xs text-neutral-500 text-center">Secure checkout • Razorpay</p>
+          </div>
+        )}
+
+        {/* PHASE: timeout — webhook didn't arrive in time, unlock manual proceed */}
+        {phase === 'timeout' && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+              <p className="text-sm font-semibold text-amber-800 mb-1">Booking confirmation is taking longer than expected</p>
+              <p className="text-xs text-amber-700">
+                Your Cal.com slot has been saved. You can proceed to payment now — the schedule time will appear once Cal.com confirms.
+              </p>
+            </div>
+            <button
+              onClick={handlePay}
+              className="w-full py-3.5 text-[15px] font-medium rounded-xl bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-sm active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              Continue to Payment
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
