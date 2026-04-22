@@ -6,8 +6,7 @@ import { success, error } from '@/lib/api-response'
 import { z } from 'zod'
 
 const createBookingSchema = z.object({
-  mentorId:    z.string().uuid('Invalid mentor ID'),
-  bookingNote: z.string().max(200).optional(),
+  mentorId: z.string().uuid('Invalid mentor ID'),
 })
 
 export async function POST(req: NextRequest) {
@@ -23,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return error(parsed.error.issues[0].message, 400)
 
   try {
-    const booking = await createBooking(user!.id, parsed.data.mentorId, parsed.data.bookingNote)
+    const booking = await createBooking(user!.id, parsed.data.mentorId)
     return success({ bookingId: booking.id, sessionToken: booking.sessionToken, paymentRequired: true }, 201)
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'DUPLICATE_BOOKING')

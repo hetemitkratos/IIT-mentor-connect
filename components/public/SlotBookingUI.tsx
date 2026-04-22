@@ -1,22 +1,67 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface SlotBookingUIProps {
-  mentorId: string
+  mentorId:   string
   mentorName: string
-  calLink: string | null
+  calLink:    string | null
 }
 
+/**
+ * SlotBookingUI — webhook-driven booking flow.
+ *
+ * Phase 1 (Embed): Student uses the Cal.com iframe to pick a time.
+ * Phase 2 (Ready to pay): Student clicks "I've selected my time" → booking is created
+ *           immediately AND we start polling /api/bookings/[id] every 3 s.
+ *           Once webhook fires and scheduledAt is set, the CTA promotes to full orange.
+ * Phase 3 (Navigate): Student clicks pay → goes to /payment/[bookingId].
+ *
+ * The checkbox is now a single-click "I'm done scheduling" trigger — not manual
+ * confirmation of *truth*, just a signal to start the flow.
+ */
 export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBookingUIProps) {
   const router = useRouter()
 
-  const [confirmed, setConfirmed] = useState(false)
-  const [loading, setLoading]     = useState(false)
-  const [error, setError]         = useState<string | null>(null)
+  const [phase, setPhase] = useState<'embed' | 'creating' | 'waiting' | 'confirmed'>('embed')
+  const [bookingId, setBookingId] = useState<string | null>(null)
+  const [sessionToken, setSessionToken] = useState<string | null>(null)
+  const [scheduledAt, setScheduledAt] = useState<string | null>(null)
+  const [meetingUrl, setMeetingUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  /* ── no Cal.com link ── */
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // ── Poll for webhook data ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== 'waiting' || !bookingId) return
+
+    intervalRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}`)
+        if (!res.ok) return
+
+        const json = await res.json()
+        const data = json?.data
+
+        if (data?.scheduledAt) {
+          setScheduledAt(data.scheduledAt)
+          setMeetingUrl(data.meetingUrl ?? null)
+          setPhase('confirmed')
+          if (intervalRef.current) clearInterval(intervalRef.current)
+        }
+      } catch {
+        // silent — keep polling
+      }
+    }, 3000)
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [phase, bookingId])
+
+  // ── no Cal.com link ───────────────────────────────────────────────────────
   if (!calLink) {
     return (
       <div className="p-6 rounded-2xl border border-[rgba(221,193,175,0.2)] bg-[#fafafa] text-center">
@@ -33,11 +78,10 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
     )
   }
 
-  /* ── booking handler ── */
-  const handleContinue = async () => {
-    if (!confirmed) return
-    setLoading(true)
+  // ── PHASE 1 handler: create booking immediately on CTA click ─────────────
+  const handleScheduled = async () => {
     setError(null)
+    setPhase('creating')
 
     try {
       const res = await fetch('/api/bookings/create', {
@@ -50,42 +94,57 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
 
       if (!res.ok) {
         setError(json.error ?? 'Failed to create booking. Please try again.')
-        setLoading(false)
+        setPhase('embed')
         return
       }
 
-      // API returns { success: true, data: { bookingId, sessionToken, paymentRequired } }
-      const bookingId = json?.data?.bookingId
-      if (!bookingId) {
+      const bid = json?.data?.bookingId
+      const token = json?.data?.sessionToken
+
+      if (!bid) {
         setError('Booking created but ID was not returned. Please contact support.')
-        setLoading(false)
+        setPhase('embed')
         return
       }
 
-      router.push(`/payment/${bookingId}`)
+      setBookingId(bid)
+      setSessionToken(token)
+      setPhase('waiting')
     } catch {
       setError('Network error. Please try again.')
-      setLoading(false)
+      setPhase('embed')
     }
   }
 
+  // ── Navigate to payment ───────────────────────────────────────────────────
+  const handlePay = () => {
+    if (bookingId) router.push(`/payment/${bookingId}`)
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-6">
 
-      {/* ── Session info card ───────────────────────────────────── */}
+      {/* ── Info card ─────────────────────────────────────────────── */}
       <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-5 py-4 text-sm text-neutral-700">
-        <p className="font-medium text-neutral-900 mb-1">Session confirmation</p>
-        <p>Your session is confirmed only after payment. You&apos;ll have 30 minutes to complete it.</p>
+        <p className="font-medium text-neutral-900 mb-1">How it works</p>
+        <ol className="space-y-1 list-decimal list-inside text-neutral-600">
+          <li>Select a time in the calendar below</li>
+          <li>Click &ldquo;I&apos;ve selected my time&rdquo; to reserve your spot</li>
+          <li>Complete payment to confirm your session</li>
+        </ol>
+        <p className="mt-2 text-xs text-neutral-500">
+          Use the <strong>same email</strong> for scheduling and your account — this links your booking automatically.
+        </p>
       </div>
 
-      {/* ── Cal.com embed ───────────────────────────────────────── */}
+      {/* ── Cal.com embed ─────────────────────────────────────────── */}
       <div className="rounded-2xl border border-neutral-200 overflow-hidden shadow-sm bg-white">
         <div className="px-4 py-3 border-b flex items-center justify-between bg-neutral-50">
           <div className="flex items-center gap-2 text-sm font-medium text-neutral-600">
             <span className="w-2 h-2 bg-green-500 rounded-full" />
             Step 1 — Select a time
           </div>
-          {/* Mobile full-screen fallback */}
           <a
             href={calLink}
             target="_blank"
@@ -106,67 +165,92 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
         />
       </div>
 
-      {/* ── Sticky confirmation + CTA ────────────────────────────── */}
+      {/* ── CTA area ──────────────────────────────────────────────── */}
       <div className="sticky bottom-0 bg-white border-t sm:border sm:rounded-2xl sm:shadow-md p-5 pb-8 sm:pb-5 space-y-4 -mx-7 px-7 sm:mx-0 z-10">
 
-        <label className="flex items-start gap-3 cursor-pointer group select-none">
-          <div className="mt-0.5 shrink-0">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={e => setConfirmed(e.target.checked)}
-              className="sr-only"
-            />
-            <div
-              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200 ${
-                confirmed
-                  ? 'bg-[#f5820a] border-[#f5820a] shadow-[0_0_0_3px_rgba(245,130,10,0.15)]'
-                  : 'bg-white border-neutral-300 group-hover:border-[#f5820a]/60'
-              }`}
+        {/* PHASE: embed — show primary CTA */}
+        {phase === 'embed' && (
+          <button
+            onClick={handleScheduled}
+            className="w-full py-3.5 text-[15px] font-medium rounded-xl bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-sm active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            I&apos;ve selected my time — Reserve spot
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        )}
+
+        {/* PHASE: creating — spinner */}
+        {phase === 'creating' && (
+          <button
+            disabled
+            className="w-full py-3.5 text-[15px] font-medium rounded-xl bg-neutral-100 text-neutral-400 cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <span className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-600 rounded-full animate-spin" />
+            Reserving your spot…
+          </button>
+        )}
+
+        {/* PHASE: waiting — polling for webhook */}
+        {phase === 'waiting' && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-5 py-4">
+              <div className="flex items-center gap-3 mb-1">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                <p className="text-sm font-medium text-neutral-800">Waiting for booking confirmation…</p>
+              </div>
+              <p className="text-xs text-neutral-500 pl-5">
+                Cal.com is confirming your slot. This usually takes a few seconds.
+              </p>
+            </div>
+            <button
+              onClick={handlePay}
+              className="w-full py-3.5 text-[15px] font-medium rounded-xl bg-neutral-200 text-neutral-500 cursor-not-allowed flex items-center justify-center gap-2"
+              disabled
             >
-              {confirmed && (
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+              Secure your session — Pay ₹150
+            </button>
+            <p className="text-xs text-neutral-400 text-center">Payment will unlock once your time is confirmed</p>
+          </div>
+        )}
+
+        {/* PHASE: confirmed — webhook received */}
+        {phase === 'confirmed' && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-              )}
+                <div>
+                  <p className="text-sm font-semibold text-green-800">Time confirmed!</p>
+                  {scheduledAt && (
+                    <p className="text-xs text-green-700 mt-0.5">
+                      {new Date(scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
+            <button
+              onClick={handlePay}
+              className="w-full py-3.5 text-[15px] font-semibold rounded-xl bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-[0_4px_16px_rgba(245,130,10,0.35)] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              Secure your session — Pay ₹150
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+            <p className="text-xs text-neutral-500 text-center">Secure checkout • Razorpay</p>
           </div>
-          <span className="text-sm text-neutral-700 leading-snug">
-            I have selected a time with <span className="font-medium">{mentorName}</span>
-          </span>
-        </label>
+        )}
 
         {error && (
           <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100">
             <p className="text-sm text-red-600 font-medium">{error}</p>
           </div>
         )}
-
-        <button
-          onClick={handleContinue}
-          disabled={!confirmed || loading}
-          className={`w-full py-3.5 text-[15px] font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2 ${
-            !confirmed || loading
-              ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-              : 'bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-sm active:scale-[0.98]'
-          }`}
-        >
-          {loading ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
-              Creating booking…
-            </>
-          ) : (
-            <>
-              Secure your session — Pay ₹150
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </>
-          )}
-        </button>
-
-        <p className="text-xs text-neutral-500 text-center">Secure checkout • Razorpay</p>
 
       </div>
     </div>

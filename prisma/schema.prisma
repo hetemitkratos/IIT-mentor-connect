@@ -183,6 +183,20 @@ model WebhookEvent {
   @@map("webhook_events")
 }
 
+/// Buffer to prevent race conditions when Cal.com webhook arrives
+/// before the student's booking record has been created.
+model CalWebhookBuffer {
+  id              String    @id @default(cuid())
+  externalEventId String    @unique @map("external_event_id")
+  attendeeEmail   String    @map("attendee_email")
+  scheduledAt     DateTime  @map("scheduled_at")
+  meetingUrl      String?   @map("meeting_url")
+  processed       Boolean   @default(false)
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@map("cal_webhook_buffer")
+}
+
 enum Role {
   aspirant
   mentor

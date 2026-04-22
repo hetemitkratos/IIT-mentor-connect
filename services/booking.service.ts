@@ -24,10 +24,15 @@ export async function expireBookingsIfNeeded(bookings: Booking[]) {
 
 
 export async function createBooking(
-  studentId:   string,
-  mentorId:    string,
-  bookingNote?: string,
+  studentId: string,
+  mentorId:  string,
 ) {
+  // Get student email for webhook buffer lookup
+  const student = await prisma.user.findUnique({
+    where: { id: studentId },
+    select: { email: true },
+  })
+
   return prisma.$transaction(async (tx) => {
     // Integrity checks
     const mentor = await tx.mentor.findUnique({ where: { id: mentorId } })
@@ -40,7 +45,6 @@ export async function createBooking(
       where: {
         mentorId,
         studentId,
-        // Only block genuinely active bookings (pending payment or already scheduled)
         status: { in: [BookingStatus.payment_pending, BookingStatus.scheduled] },
       },
     })
@@ -69,11 +73,40 @@ export async function createBooking(
         studentId,
         mentorId,
         status:           'payment_pending',
-        externalScheduled: true,   // student confirmed scheduling via Calendly embed
-        bookingNote:      bookingNote ?? null,
+        externalScheduled: true,
         paymentExpiresAt,
       },
     })
+
+    // ── Retroactive webhook attach ─────────────────────────────────────────
+    // If webhook arrived BEFORE booking was created, link the buffered data now
+    if (student?.email) {
+      const buffered = await tx.calWebhookBuffer.findFirst({
+        where: {
+          attendeeEmail: student.email,
+          processed:     false,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      if (buffered) {
+        await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            scheduledAt:     buffered.scheduledAt,
+            meetingUrl:      buffered.meetingUrl,
+            attendeeEmail:   buffered.attendeeEmail,
+            externalEventId: buffered.externalEventId,
+          },
+        })
+        await tx.calWebhookBuffer.update({
+          where: { id: buffered.id },
+          data: { processed: true },
+        })
+        console.log(`[BOOKING_CREATED] Retroactively linked webhook buffer ${buffered.id} → booking ${booking.id}`)
+      }
+    }
+
     console.log('[BOOKING_CREATED]', { bookingId: booking.id, studentId, mentorId })
     return booking
   })

@@ -131,14 +131,29 @@ export default function CompletePaymentButton({ bookingId, sessionToken }: { boo
   }
 
   return (
-    <div className="mt-4 flex flex-col items-start gap-2">
-      <p className="text-sm font-medium text-orange-600">Complete payment to confirm your session</p>
+    <div className="flex flex-col items-start gap-3">
       <button
         onClick={handlePayment}
         disabled={loading}
-        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50"
+        className={`w-full py-4 text-[15px] font-semibold rounded-2xl transition-all duration-200 flex items-center justify-center gap-2 ${
+          loading
+            ? 'bg-[rgba(245,130,10,0.15)] text-[#d96e08] cursor-not-allowed'
+            : 'bg-[#f5820a] text-white hover:bg-[#e07509] active:scale-[0.98] shadow-[0_8px_24px_rgba(245,130,10,0.35)]'
+        }`}
       >
-        {loading ? 'Processing...' : 'Complete Payment'}
+        {loading ? (
+          <>
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Processing…
+          </>
+        ) : (
+          <>
+            Complete Payment — ₹150
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </>
+        )}
       </button>
     </div>
   )
