@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       if (err.message === 'NOT_FOUND') return error('Booking not found', 404)
       if (err.message === 'INVALID_BOOKING_STATUS') return error('Booking is not in a payable state', 409)
       if (err.message === 'ACTIVE_BOOKING_EXISTS') return error('You already have an active booking with this mentor', 409)
+      if (err.message === 'booking_unconfirmed') return error('Booking not confirmed yet. We are waiting on Cal.com.', 400)
     }
     console.error("Create Order Error Debug:", err);
     return error(`Failed to create payment order: ${err instanceof Error ? err.message : String(err)}`, 500)

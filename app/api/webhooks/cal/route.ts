@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { BookingStatus } from '@prisma/client'
+import crypto from 'crypto'
 
 /**
  * POST /api/webhooks/cal
@@ -20,10 +21,41 @@ import { BookingStatus } from '@prisma/client'
  *   URL: https://candidconversations.in/api/webhooks/cal
  *   Events: BOOKING_CREATED, BOOKING_CANCELLED
  */
+function verifySignature(rawBody: string, signature: string | null) {
+  if (!signature || !process.env.CAL_WEBHOOK_SECRET) return false
+  
+  try {
+    const expected = crypto
+      .createHmac('sha256', process.env.CAL_WEBHOOK_SECRET)
+      .update(rawBody)
+      .digest('hex')
+
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))
+  } catch (err) {
+    console.error('[CAL_WEBHOOK] Signature validation runtime error:', err)
+    return false
+  }
+}
+
 export async function POST(req: Request) {
+  let rawBody: string
+  
+  try {
+    rawBody = await req.text()
+  } catch {
+    return new Response('Unable to read body', { status: 400 })
+  }
+
+  const signature = req.headers.get('cal-signature')
+
+  if (!verifySignature(rawBody, signature)) {
+    console.error('[CAL_WEBHOOK] ❌ Invalid signature')
+    return new Response('Invalid signature', { status: 401 })
+  }
+
   let body: unknown
   try {
-    body = await req.json()
+    body = JSON.parse(rawBody)
   } catch {
     return new Response('Invalid JSON', { status: 400 })
   }

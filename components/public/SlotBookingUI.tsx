@@ -35,6 +35,7 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
   const [attendeeEmail, setAttendeeEmail] = useState<string | null>(null)
   const [manualOverride, setManualOverride] = useState(false)
   const [justConfirmed, setJustConfirmed] = useState(false)
+  const [showStrongWarning, setShowStrongWarning] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -83,6 +84,19 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [phase, bookingId])
+
+  // ── 10 min Soft Limit Warning ─────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== 'timeout') return
+    const id = setInterval(() => {
+      // 10 minutes = 10 * 60 * 1000
+      if (Date.now() - pollStartRef.current > 10 * 60 * 1000) {
+        setShowStrongWarning(true)
+        clearInterval(id)
+      }
+    }, 5000)
+    return () => clearInterval(id)
+  }, [phase])
 
   // ── no Cal.com link ───────────────────────────────────────────────────────
   if (!calLink) {
@@ -301,6 +315,16 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
                 <span className="text-[13px] font-medium text-neutral-700 block -mt-0.5 leading-snug">I have already selected a time in the calendar</span>
               </label>
             </div>
+            
+            {showStrongWarning && manualOverride && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+                <p className="text-sm font-semibold text-red-800 mb-1">Warning: Payment may fail</p>
+                <p className="text-xs text-red-700">
+                  It has been over 10 minutes and Cal.com has not confirmed the slot. If payment fails, your selected time may have been taken. Please refresh and try booking a new slot.
+                </p>
+              </div>
+            )}
+
             <button
               onClick={handlePay}
               disabled={!manualOverride}

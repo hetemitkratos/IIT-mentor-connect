@@ -12,6 +12,10 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
 
   if (!booking || booking.studentId !== studentId) throw new Error('NOT_FOUND')
   if (booking.status !== 'payment_pending') throw new Error('INVALID_BOOKING_STATUS')
+  
+  // Final Consistency Lock: Never allow payment without webhook payload arrival!
+  // UI "manual override" lets them attempt this, but backend strictly bounces if untrue.
+  if (!booking.scheduledAt) throw new Error('booking_unconfirmed')
 
   // Multi-tab duplicate guard — prevent duplicate payments for the same mentor
   const existingActive = await prisma.booking.findFirst({
