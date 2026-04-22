@@ -39,9 +39,9 @@ export default async function MentorSlugPage({ params }: { params: Promise<{ slu
           <span className="group-hover:-translate-x-0.5 transition-transform">←</span> All Mentors
         </a>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-10">
           {/* ── Left column: Profile ──────────────────── */}
-          <div className="lg:col-span-2 flex flex-col gap-5">
+          <div className="flex flex-col gap-8">
 
             {/* Hero card */}
             <div className="bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-7">
@@ -119,7 +119,7 @@ export default async function MentorSlugPage({ params }: { params: Promise<{ slu
           </div>
 
           {/* ── Right column: Booking ──────────────────── */}
-          <div className="lg:col-span-1">
+          <div>
             <div className="sticky top-8 bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-7">
               <h2
                 className="text-[22px] font-normal italic text-[#1a1c1c] mb-1"
