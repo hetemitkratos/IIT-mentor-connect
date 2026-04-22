@@ -115,7 +115,7 @@ export async function POST(req: Request) {
         where: {
           studentId:   user.id,
           ...(mentorId ? { mentorId } : {}),
-          status:      BookingStatus.payment_pending,
+          status: { in: [BookingStatus.payment_pending, BookingStatus.scheduled] },
           scheduledAt: null,   // not yet webhook-linked
           createdAt: {
             gte: new Date(Date.now() - 30 * 60 * 1000)

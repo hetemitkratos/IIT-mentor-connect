@@ -13,6 +13,21 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
   if (!booking || booking.studentId !== studentId) throw new Error('NOT_FOUND')
   if (booking.status !== 'payment_pending') throw new Error('INVALID_BOOKING_STATUS')
 
+  // Multi-tab duplicate guard — prevent duplicate payments for the same mentor
+  const existingActive = await prisma.booking.findFirst({
+    where: {
+      studentId,
+      mentorId: booking.mentorId,
+      status: {
+        in: ['payment_pending', 'scheduled'],
+      },
+    },
+  })
+
+  if (existingActive && existingActive.id !== bookingId) {
+    throw new Error('ACTIVE_BOOKING_EXISTS')
+  }
+
   // Idempotency — return existing order if already created for this booking
   const existingPayment = await prisma.payment.findUnique({ where: { bookingId } })
   if (existingPayment) {

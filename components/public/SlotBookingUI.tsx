@@ -34,6 +34,7 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
   const [meetingUrl, setMeetingUrl] = useState<string | null>(null)
   const [attendeeEmail, setAttendeeEmail] = useState<string | null>(null)
   const [manualOverride, setManualOverride] = useState(false)
+  const [justConfirmed, setJustConfirmed] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -69,6 +70,8 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
           setMeetingUrl(data.meetingUrl ?? null)
           setAttendeeEmail(data.attendeeEmail ?? null)
           setPhase('confirmed')
+          setJustConfirmed(true)
+          setTimeout(() => setJustConfirmed(false), 3000)
           if (intervalRef.current) clearInterval(intervalRef.current)
         }
       } catch {
@@ -231,7 +234,9 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
             >
               Secure your session — Pay ₹150
             </button>
-            <p className="text-xs text-neutral-400 text-center">Payment will unlock once your time is confirmed</p>
+            <p className="text-xs text-neutral-500 text-center transition-all duration-300">
+              Waiting for booking confirmation…
+            </p>
           </div>
         )}
 
@@ -244,7 +249,9 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <p className="text-sm font-semibold text-green-800">Time confirmed — continue to payment</p>
+                  <p className="text-sm font-semibold text-green-800 transition-all duration-300">
+                    {justConfirmed ? '✓ Booking confirmed just now' : 'Time confirmed — continue to payment'}
+                  </p>
                   {scheduledAt && (
                     <p className="text-xs text-green-700 mt-0.5">
                       {new Date(scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -267,7 +274,12 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </button>
-            <p className="text-xs text-neutral-500 text-center">Secure checkout • Razorpay</p>
+            <p className="text-xs text-neutral-500 text-center flex items-center justify-center gap-1.5 transition-all duration-300">
+              <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+              Secure checkout via Razorpay
+            </p>
           </div>
         )}
 
@@ -303,7 +315,12 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </button>
-            <p className="text-xs text-neutral-500 text-center">Secure checkout • Razorpay</p>
+            <p className="text-xs text-neutral-500 text-center flex items-center justify-center gap-1.5 transition-all duration-300">
+              <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+              Secure checkout via Razorpay
+            </p>
           </div>
         )}
 

@@ -47,6 +47,11 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
               Join Google Meet →
             </a>
           )}
+          {!booking.meetingUrl && (
+            <div className="mb-6 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl max-w-sm w-full mx-auto">
+              <p className="text-[13px] font-medium text-neutral-700">Meeting link will be shared via email.</p>
+            </div>
+          )}
           <Link href="/dashboard" className="px-6 py-3 bg-[#1a1c1c] text-white rounded-full font-semibold text-sm">
             Go to Dashboard
           </Link>
