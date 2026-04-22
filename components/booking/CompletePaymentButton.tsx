@@ -28,6 +28,16 @@ export default function CompletePaymentButton({ bookingId, sessionToken }: { boo
     try {
       setLoading(true);
 
+      if (
+        window.location.hostname !== "candidconversations.in" &&
+        window.location.hostname !== "www.candidconversations.in" &&
+        window.location.hostname !== "localhost"
+      ) {
+        alert("Payments are restricted to the candidconversations.in domain.");
+        setLoading(false);
+        return;
+      }
+
       // Step 1: Load Razorpay SDK
       const isLoaded = await loadRazorpay();
 
