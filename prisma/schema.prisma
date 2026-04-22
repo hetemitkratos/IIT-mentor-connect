@@ -84,8 +84,8 @@ model Mentor {
   languages    String[]
   bio          String
 
-  // Primary scheduling link (Calendly)
-  calendlyLink    String?   @map("calendly_link")
+  // Primary scheduling link (Cal.com)
+  calLink         String?   @map("calendly_link")
 
   // Deprecated OAuth fields — retained for zero-downtime, not written to
   calAccessToken  String?   @map("cal_access_token")
@@ -128,12 +128,18 @@ model Booking {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   
-  // Phase 3 Slot Booking Details (selectedDay/selectedSlot kept for legacy bookings)
+  // Phase 3 Slot Booking Details
   selectedDay       String?   @map("selected_day")
   selectedSlot      String?   @map("selected_slot")
   externalScheduled Boolean   @default(false) @map("external_scheduled")
   paymentExpiresAt  DateTime? @map("payment_expires_at")
   bookingNote       String?   @map("booking_note")
+
+  // Cal.com webhook data
+  scheduledAt       DateTime? @map("scheduled_at")
+  meetingUrl        String?   @map("meeting_url")
+  attendeeEmail     String?   @map("attendee_email")
+  externalEventId   String?   @unique @map("external_event_id")
   otp               String?
   otpGeneratedAt    DateTime? @map("otp_generated_at")
   otpVerified       Boolean   @default(false) @map("otp_verified")

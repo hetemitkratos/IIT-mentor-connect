@@ -29,8 +29,24 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
           </div>
           <h1 className="text-[28px] font-['Newsreader'] italic mb-3 text-[#1a1c1c]">Payment Successful</h1>
           <p className="text-[#585f6c] text-[15px] mb-8">
-            Your session with {booking.mentor.user.name} is confirmed for {booking.selectedDay} at {booking.selectedSlot}.
+            Your session with {booking.mentor.user.name} is confirmed.
+            {booking.scheduledAt && (
+              <>
+                {' '}Scheduled for{' '}
+                <strong>{new Date(booking.scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</strong>.
+              </>
+            )}
           </p>
+          {booking.meetingUrl && (
+            <a
+              href={booking.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-6 inline-flex items-center gap-2 px-5 py-2.5 bg-[#f5820a]/10 text-[#f5820a] rounded-full text-sm font-semibold hover:bg-[#f5820a]/20 transition-colors"
+            >
+              Join Google Meet →
+            </a>
+          )}
           <Link href="/dashboard" className="px-6 py-3 bg-[#1a1c1c] text-white rounded-full font-semibold text-sm">
             Go to Dashboard
           </Link>
@@ -89,9 +105,9 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
             <div className="flex justify-between items-center bg-[#f9f9f9] p-4 rounded-2xl">
               <span className="text-[#9ca3af] text-[13px] font-semibold uppercase tracking-wider">Schedule</span>
               <span className="text-[#1a1c1c] font-semibold">
-                {booking.selectedDay && booking.selectedSlot
-                  ? `${booking.selectedDay} at ${booking.selectedSlot}`
-                  : 'Coordinate with mentor for exact time'}
+                {booking.scheduledAt
+                  ? new Date(booking.scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+                  : 'Waiting for Cal.com booking confirmation…'}
               </span>
             </div>
             <div className="flex justify-between items-center bg-[#f9f9f9] p-4 rounded-2xl">

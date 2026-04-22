@@ -13,7 +13,7 @@ interface MentorCardProps {
     year:         number
     languages:    string[]
     bio:          string
-    calendlyLink?: string | null
+    calLink?: string | null
     profileImage: string | null
     user:         { name: string | null; image: string | null }
   }

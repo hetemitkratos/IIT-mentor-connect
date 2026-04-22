@@ -38,7 +38,7 @@ export async function approveApplication(applicationId: string) {
         year:        application.year,
         languages:   application.languages,
         bio:         application.bio,
-        calendlyLink: application.calLink,
+        calLink:      application.calLink,
       },
     }),
     prisma.user.update({

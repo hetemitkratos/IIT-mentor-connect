@@ -2,25 +2,22 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
-import { InlineWidget } from 'react-calendly'
 
 interface SlotBookingUIProps {
-  mentorId:     string
-  mentorName:   string
-  calendlyLink: string | null
+  mentorId: string
+  mentorName: string
+  calLink: string | null
 }
 
-export default function SlotBookingUI({ mentorId, mentorName, calendlyLink }: SlotBookingUIProps) {
+export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBookingUIProps) {
   const router = useRouter()
-  const { data: session } = useSession()
 
   const [confirmed, setConfirmed] = useState(false)
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState<string | null>(null)
 
-  /* ── no Calendly link ── */
-  if (!calendlyLink) {
+  /* ── no Cal.com link ── */
+  if (!calLink) {
     return (
       <div className="p-6 rounded-2xl border border-[rgba(221,193,175,0.2)] bg-[#fafafa] text-center">
         <div className="w-10 h-10 rounded-full bg-[rgba(245,130,10,0.1)] flex items-center justify-center mx-auto mb-3">
@@ -36,6 +33,7 @@ export default function SlotBookingUI({ mentorId, mentorName, calendlyLink }: Sl
     )
   }
 
+  /* ── booking handler ── */
   const handleContinue = async () => {
     if (!confirmed) return
     setLoading(true)
@@ -45,9 +43,7 @@ export default function SlotBookingUI({ mentorId, mentorName, calendlyLink }: Sl
       const res = await fetch('/api/bookings/create', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          mentorId,
-        }),
+        body:    JSON.stringify({ mentorId }),
       })
 
       const json = await res.json()
@@ -58,6 +54,7 @@ export default function SlotBookingUI({ mentorId, mentorName, calendlyLink }: Sl
         return
       }
 
+      // API returns { success: true, data: { bookingId, sessionToken, paymentRequired } }
       const bookingId = json?.data?.bookingId
       if (!bookingId) {
         setError('Booking created but ID was not returned. Please contact support.')
@@ -75,50 +72,43 @@ export default function SlotBookingUI({ mentorId, mentorName, calendlyLink }: Sl
   return (
     <div className="flex flex-col gap-6">
 
-      {/* ── PREMIUM INFO CARD ──────────────────────────────────── */}
+      {/* ── Session info card ───────────────────────────────────── */}
       <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-5 py-4 text-sm text-neutral-700">
-        <p className="font-medium text-neutral-900 mb-1">
-          Session confirmation
-        </p>
-        <p>
-          Your session is confirmed only after payment. You’ll have 30 minutes to complete it.
-        </p>
+        <p className="font-medium text-neutral-900 mb-1">Session confirmation</p>
+        <p>Your session is confirmed only after payment. You&apos;ll have 30 minutes to complete it.</p>
       </div>
 
-      {/* ── CALENDLY EMBED ─────────────────────────────────────── */}
+      {/* ── Cal.com embed ───────────────────────────────────────── */}
       <div className="rounded-2xl border border-neutral-200 overflow-hidden shadow-sm bg-white">
         <div className="px-4 py-3 border-b flex items-center justify-between bg-neutral-50">
           <div className="flex items-center gap-2 text-sm font-medium text-neutral-600">
             <span className="w-2 h-2 bg-green-500 rounded-full" />
-            Select a time
+            Step 1 — Select a time
           </div>
           {/* Mobile full-screen fallback */}
           <a
-            href={calendlyLink}
+            href={calLink}
             target="_blank"
             rel="noopener noreferrer"
             className="sm:hidden text-[11px] text-[#f5820a] font-semibold underline underline-offset-2"
-            aria-label="Open Calendly scheduling page in a new tab"
+            aria-label="Open Cal.com scheduling page in a new tab"
           >
             Open full screen ↗
           </a>
         </div>
-        
-        <div className="w-full h-[750px] sm:h-[800px]">
-          <InlineWidget
-            url={calendlyLink}
-            prefill={{
-              name: session?.user?.name || '',
-              email: session?.user?.email || '',
-            }}
-            styles={{ width: '100%', height: '100%' }}
-          />
-        </div>
+        <iframe
+          src={calLink}
+          width="100%"
+          className="block h-[750px] sm:h-[800px]"
+          frameBorder="0"
+          title={`Book a session with ${mentorName}`}
+          loading="lazy"
+        />
       </div>
 
-      {/* ── CONFIRMATION + CTA ─────────────────────────────────── */}
+      {/* ── Sticky confirmation + CTA ────────────────────────────── */}
       <div className="sticky bottom-0 bg-white border-t sm:border sm:rounded-2xl sm:shadow-md p-5 pb-8 sm:pb-5 space-y-4 -mx-7 px-7 sm:mx-0 z-10">
-        
+
         <label className="flex items-start gap-3 cursor-pointer group select-none">
           <div className="mt-0.5 shrink-0">
             <input
@@ -176,12 +166,9 @@ export default function SlotBookingUI({ mentorId, mentorName, calendlyLink }: Sl
           )}
         </button>
 
-        <p className="text-xs text-neutral-500 text-center">
-          Secure checkout • Razorpay
-        </p>
+        <p className="text-xs text-neutral-500 text-center">Secure checkout • Razorpay</p>
 
       </div>
-
     </div>
   )
 }

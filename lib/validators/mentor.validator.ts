@@ -17,7 +17,7 @@ export const mentorApplySchema = z.object({
 export const mentorProfileUpdateSchema = z.object({
   bio:          z.string().min(50).max(600).optional(),
   languages:    z.array(z.string()).min(1).optional(),
-  calendlyLink: z.string().url().optional(),
+  calLink:       z.string().url().regex(/cal\.com/, 'Must be a valid cal.com link').optional(),
   year:         z.number().int().min(1).max(5).optional(),
 })
 

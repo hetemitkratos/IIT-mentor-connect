@@ -9,7 +9,7 @@ export interface Mentor {
   year:         number
   languages:    string[]
   bio:          string
-  calendlyLink: string | null
+  calLink: string | null
   profileImage: string | null
   isActive:     boolean
 }
