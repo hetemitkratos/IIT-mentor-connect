@@ -117,12 +117,20 @@ export async function POST(req: Request) {
           ...(mentorId ? { mentorId } : {}),
           status:      BookingStatus.payment_pending,
           scheduledAt: null,   // not yet webhook-linked
+          createdAt: {
+            gte: new Date(Date.now() - 30 * 60 * 1000)
+          }
         },
         orderBy: { createdAt: 'desc' },
       })
 
       if (!booking) {
         console.warn('[CAL_WEBHOOK] No matching payment_pending booking — buffered for retroactive attach')
+        return new Response('ok', { status: 200 })
+      }
+
+      if (booking.externalEventId) {
+        console.warn('[CAL_WEBHOOK] Booking already linked — skipping overwrite')
         return new Response('ok', { status: 200 })
       }
 

@@ -32,6 +32,8 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [scheduledAt, setScheduledAt] = useState<string | null>(null)
   const [meetingUrl, setMeetingUrl] = useState<string | null>(null)
+  const [attendeeEmail, setAttendeeEmail] = useState<string | null>(null)
+  const [manualOverride, setManualOverride] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -65,6 +67,7 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
         if (data?.scheduledAt) {
           setScheduledAt(data.scheduledAt)
           setMeetingUrl(data.meetingUrl ?? null)
+          setAttendeeEmail(data.attendeeEmail ?? null)
           setPhase('confirmed')
           if (intervalRef.current) clearInterval(intervalRef.current)
         }
@@ -191,7 +194,7 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
             onClick={handleScheduled}
             className="w-full py-3.5 text-[15px] font-medium rounded-xl bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-sm active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
           >
-            I&apos;ve selected my time — Reserve spot
+            Select a time to continue
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
@@ -241,10 +244,15 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <p className="text-sm font-semibold text-green-800">Time confirmed!</p>
+                  <p className="text-sm font-semibold text-green-800">Time confirmed — continue to payment</p>
                   {scheduledAt && (
                     <p className="text-xs text-green-700 mt-0.5">
                       {new Date(scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                  )}
+                  {attendeeEmail && (
+                    <p className="text-xs text-green-700/80 mt-1">
+                      Confirmed for: <span className="font-medium text-green-800">{attendeeEmail}</span>
                     </p>
                   )}
                 </div>
@@ -266,15 +274,29 @@ export default function SlotBookingUI({ mentorId, mentorName, calLink }: SlotBoo
         {/* PHASE: timeout — webhook didn't arrive in time, unlock manual proceed */}
         {phase === 'timeout' && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
-              <p className="text-sm font-semibold text-amber-800 mb-1">Booking confirmation is taking longer than expected</p>
-              <p className="text-xs text-amber-700">
-                Your Cal.com slot has been saved. You can proceed to payment now — the schedule time will appear once Cal.com confirms.
+            <div className="rounded-xl border border-neutral-200 bg-[#fafafa] px-5 py-4">
+              <p className="text-sm font-semibold text-neutral-900 mb-2">We couldn&apos;t confirm automatically</p>
+              <p className="text-[13px] text-neutral-600 mb-4 tracking-[-0.01em] leading-relaxed">
+                If you have already selected a time, you can continue. Otherwise, please complete your booking first.
               </p>
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  className="mt-0.5 rounded border-neutral-300 text-[#f5820a] focus:ring-[#f5820a]"
+                  onChange={(e) => setManualOverride(e.target.checked)} 
+                  checked={manualOverride}
+                />
+                <span className="text-[13px] font-medium text-neutral-700 block -mt-0.5 leading-snug">I have already selected a time in the calendar</span>
+              </label>
             </div>
             <button
               onClick={handlePay}
-              className="w-full py-3.5 text-[15px] font-medium rounded-xl bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-sm active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
+              disabled={!manualOverride}
+              className={`w-full py-3.5 text-[15px] font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 ${
+                manualOverride
+                  ? 'bg-[#f5820a] text-white hover:bg-[#e67a0a] shadow-sm active:scale-[0.98]'
+                  : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+              }`}
             >
               Continue to Payment
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
