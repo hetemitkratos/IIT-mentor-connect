@@ -20,7 +20,7 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
     return notFound()
   }
 
-  if (booking.status === 'scheduled' || booking.status === 'payment_complete') {
+  if (booking.status === 'paid' || booking.status === 'completed') {
     return (
       <main className="min-h-screen bg-[#f9f9f9] flex items-center justify-center p-4">
         <div className="bg-white border flex flex-col items-center border-[rgba(221,193,175,0.2)] rounded-3xl p-10 max-w-md w-full text-center">

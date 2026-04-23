@@ -23,21 +23,22 @@ export async function POST(req: NextRequest) {
     })
 
     if (!booking) return error('Booking not found', 404)
-    if (booking.status !== 'scheduled') return error('Invalid booking state', 400)
+    if (booking.status !== 'paid') return error('Invalid booking state', 400)
 
     // Ensure Role Safety
     if (user!.id !== booking.studentId) {
       return error('Unauthorized', 403)
     }
 
-    if (!booking.startTime || !booking.endTime) {
+    if (!booking.startTime || !booking.endTime || !booking.date) {
       return error('Session time not set', 400)
     }
 
     // Normalize Time Comparisons
     const now = new Date()
-    const start = new Date(booking.startTime)
-    const end = new Date(booking.endTime)
+    const dateStr = booking.date.toISOString().split('T')[0]
+    const start = new Date(`${dateStr}T${booking.startTime}:00+05:30`)
+    const end = new Date(`${dateStr}T${booking.endTime}:00+05:30`)
 
     // Time window restriction: [startTime - 5 mins, endTime]
     if (now.getTime() < start.getTime() - 5 * 60 * 1000) {

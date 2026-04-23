@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!booking) return error('Booking not found', 404)
-    if (booking.status !== 'scheduled') return error('Invalid booking status', 400)
+    if (booking.status !== 'paid') return error('Invalid booking status', 400)
 
     if (isOTPBlocked(bookingId)) {
       return error('Too many failed OTP attempts. Please wait 15 minutes.', 429)
@@ -41,12 +41,13 @@ export async function POST(req: NextRequest) {
       return error('Session already verified', 400)
     }
 
-    if (!booking.startTime || !booking.endTime) {
+    if (!booking.startTime || !booking.endTime || !booking.date) {
       return error('Session time not set', 400)
     }
 
     const now = new Date()
-    const end = new Date(booking.endTime)
+    const dateStr = booking.date.toISOString().split('T')[0]
+    const end = new Date(`${dateStr}T${booking.endTime}:00+05:30`)
 
     // Prevent Verification After Session Ends
     if (now.getTime() > end.getTime()) {
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
       where: { id: booking.id },
       data: {
         otpVerified: true,
-        status: 'in_progress',
+        status: 'paid',
       },
     })
 

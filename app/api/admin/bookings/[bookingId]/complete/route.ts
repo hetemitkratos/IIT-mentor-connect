@@ -13,7 +13,7 @@ export async function PATCH(_req: Request, { params }: { params: Promise<{ booki
   } catch (err: unknown) {
     if (err instanceof Error) {
       if (err.message === 'NOT_FOUND') return error('Booking not found', 404)
-      if (err.message === 'INVALID_STATUS') return error('Booking is not in scheduled state', 409)
+      if (err.message === 'INVALID_STATUS') return error('Booking is not in paid state', 409)
     }
     return error('Failed to complete booking', 500)
   }

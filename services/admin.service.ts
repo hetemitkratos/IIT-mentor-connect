@@ -77,7 +77,7 @@ export async function getAllBookings(status?: string, page = 1, limit = 20) {
 export async function adminCompleteBooking(bookingId: string) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
   if (!booking) throw new Error('NOT_FOUND')
-  if (booking.status !== 'scheduled') throw new Error('INVALID_STATUS')
+  if (booking.status !== 'paid') throw new Error('INVALID_STATUS')
 
   return prisma.booking.update({
     where: { id: bookingId },
