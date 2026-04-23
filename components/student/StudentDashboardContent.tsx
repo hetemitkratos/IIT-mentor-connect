@@ -122,7 +122,7 @@ function InlineOTP({ booking }: { booking: BookingRow }) {
     }
   }
 
-  const isVerified = booking.otpVerified || booking.status === 'in_progress'
+  const isVerified = booking.otpVerified
   const otpValid = Boolean(otp && !isExpired)
   const canJoin = isVerified || otpValid
 
@@ -318,9 +318,9 @@ function PayNowButton({ bookingId, sessionToken }: { bookingId: string; sessionT
 // ── Session Card ───────────────────────────────────────────────────────────────
 function SessionCard({ booking }: { booking: BookingRow }) {
   const { mentor } = booking
-  const isPending = ['payment_pending', 'awaiting_payment', 'payment_complete'].includes(booking.status)
-  const isScheduled = booking.status === 'scheduled'
-  const isInProgress = booking.status === 'in_progress'
+  const isPending = booking.status === 'pending'
+  const isScheduled = booking.status === 'paid' && !booking.otpVerified
+  const isInProgress = booking.status === 'paid' && booking.otpVerified
   const isCompleted = booking.status === 'completed'
   const isCancelled = booking.status === 'cancelled'
 
@@ -412,7 +412,7 @@ export default function StudentDashboardContent({ studentName, bookings, stats }
   const [activeTab, setActiveTab] = useState<TabKey>('upcoming')
 
   // Segment bookings
-  const upcoming  = bookings.filter(b => !['completed', 'cancelled'].includes(b.status))
+  const upcoming  = bookings.filter(b => b.status === 'pending' || b.status === 'paid')
   const completed = bookings.filter(b => b.status === 'completed')
   const cancelled = bookings.filter(b => b.status === 'cancelled')
   const all       = bookings

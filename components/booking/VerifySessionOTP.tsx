@@ -12,9 +12,9 @@ export default function VerifySessionOTP({ bookingId, otpVerified, status }: Pro
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(otpVerified || status === 'in_progress')
+  const [success, setSuccess] = useState(otpVerified )
 
-  if (!['scheduled', 'in_progress'].includes(status) && !success) return null
+  if (status !== 'paid' && !success) return null
 
   if (success) {
     return (

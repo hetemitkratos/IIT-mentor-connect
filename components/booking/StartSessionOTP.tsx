@@ -63,9 +63,9 @@ export default function StartSessionOTP({
     return () => clearInterval(intId)
   }, [startTime, status, currentOtpGeneratedAt, otpVerified])
 
-  if (!['scheduled', 'in_progress'].includes(status)) return null
+  if (status !== 'paid') return null
 
-  const isVerified = otpVerified || status === 'in_progress'
+  const isVerified = otpVerified 
 
   if (otpVerified) {
     return (

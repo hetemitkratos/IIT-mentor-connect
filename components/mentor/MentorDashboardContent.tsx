@@ -217,7 +217,7 @@ function OngoingCard({ b }: { b: BookingRow }) {
   const [otp, setOtp] = useState('')
   const [otpErr, setOtpErr] = useState<string | null>(null)
   const [verifying, setVerifying] = useState(false)
-  const [verified, setVerified] = useState(b.otpVerified || b.status === 'in_progress')
+  const [verified, setVerified] = useState(b.otpVerified)
   const [completing, setCompleting] = useState(false)
   const [, startTransition] = useTransition()
 
@@ -299,7 +299,7 @@ function OngoingCard({ b }: { b: BookingRow }) {
               </svg>
               Session verified — in progress
             </div>
-            {b.status === 'in_progress' && (
+            {b.status === 'paid' && verified && (
               <button
                 onClick={handleComplete}
                 disabled={completing}
