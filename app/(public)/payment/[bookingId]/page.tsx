@@ -1,8 +1,8 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import CompletePaymentButton from '@/components/booking/CompletePaymentButton'
+import CancelBookingButton from '@/components/booking/CancelBookingButton'
 import { getBookingById } from '@/services/booking.service'
 import Link from 'next/link'
 
@@ -20,6 +20,7 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
     return notFound()
   }
 
+  // ── Already paid / completed ──
   if (booking.status === 'paid' || booking.status === 'completed') {
     return (
       <main className="min-h-screen bg-[#f9f9f9] flex items-center justify-center p-4">
@@ -30,26 +31,10 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
           <h1 className="text-[28px] font-['Newsreader'] italic mb-3 text-[#1a1c1c]">Payment Successful</h1>
           <p className="text-[#585f6c] text-[15px] mb-8">
             Your session with {booking.mentor.user.name} is confirmed.
-            {booking.scheduledAt && (
-              <>
-                {' '}Scheduled for{' '}
-                <strong>{new Date(booking.scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</strong>.
-              </>
-            )}
           </p>
-          {booking.meetingUrl && (
-            <a
-              href={booking.meetingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mb-6 inline-flex items-center gap-2 px-5 py-2.5 bg-[#f5820a]/10 text-[#f5820a] rounded-full text-sm font-semibold hover:bg-[#f5820a]/20 transition-colors"
-            >
-              Join Google Meet →
-            </a>
-          )}
           {!booking.meetingUrl && (
             <div className="mb-6 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl max-w-sm w-full mx-auto">
-              <p className="text-[13px] font-medium text-neutral-700">Meeting link will be shared via email.</p>
+              <p className="text-[13px] font-medium text-neutral-700">Your mentor will share the meeting link before the session.</p>
             </div>
           )}
           <Link href="/dashboard" className="px-6 py-3 bg-[#1a1c1c] text-white rounded-full font-semibold text-sm">
@@ -60,24 +45,30 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
     )
   }
 
+  // ── Cancelled ──
   if (booking.status === 'cancelled') {
     return (
       <main className="min-h-screen bg-[#f9f9f9] flex items-center justify-center p-4">
         <div className="bg-white border flex flex-col items-center border-[rgba(221,193,175,0.2)] rounded-3xl p-10 max-w-md w-full text-center">
-           <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
-            <span className="text-3xl text-red-500">⏳</span>
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
+            <span className="text-3xl">❌</span>
           </div>
-          <h1 className="text-[28px] font-['Newsreader'] italic mb-3 text-[#1a1c1c]">Session Expired</h1>
+          <h1 className="text-[28px] font-['Newsreader'] italic mb-3 text-[#1a1c1c]">Booking Cancelled</h1>
           <p className="text-[#585f6c] text-[15px] mb-8">
-            The 30-minute window to complete your payment has passed. Please book the slot again.
+            This booking was cancelled. The slot lock may have expired. Please book again.
           </p>
           <Link href={`/mentors/${booking.mentor.slug}`} className="px-6 py-3 bg-[#1a1c1c] text-white rounded-full font-semibold text-sm">
-            Try Again
+            Book Again
           </Link>
         </div>
       </main>
     )
   }
+
+  // ── Pending — show payment form ──
+  const dateLabel = booking.date && booking.startTime
+    ? `${new Date(booking.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} at ${booking.startTime} IST`
+    : null
 
   return (
     <main className="min-h-screen bg-[#f9f9f9]" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -91,41 +82,45 @@ export default async function PaymentPage({ params }: { params: Promise<{ bookin
           </p>
           
           <div className="flex flex-col gap-4 mb-8">
-            {/* Warning banners */}
             <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-[#fff7ed] border border-[rgba(245,130,10,0.2)]">
               <span className="text-sm shrink-0 mt-px">⚠️</span>
               <p className="text-[13px] text-[#934b00] font-medium">Your session is <strong>only confirmed after payment</strong>.</p>
             </div>
             <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-[#fff7ed] border border-[rgba(245,130,10,0.2)]">
               <span className="text-sm shrink-0 mt-px">⏱</span>
-              <p className="text-[13px] text-[#934b00] font-medium">Please complete payment within <strong>30 minutes</strong> to hold your slot.</p>
+              <p className="text-[13px] text-[#934b00] font-medium">Please complete payment within <strong>10 minutes</strong> to hold your slot.</p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-6 mb-10">
+          <div className="flex flex-col gap-4 mb-10">
             <div className="flex justify-between items-center bg-[#f9f9f9] p-4 rounded-2xl">
               <span className="text-[#9ca3af] text-[13px] font-semibold uppercase tracking-wider">Mentor</span>
               <span className="text-[#1a1c1c] font-semibold">{booking.mentor.user.name}</span>
             </div>
-            <div className="flex justify-between items-center bg-[#f9f9f9] p-4 rounded-2xl">
-              <span className="text-[#9ca3af] text-[13px] font-semibold uppercase tracking-wider">Schedule</span>
-              <span className="text-[#1a1c1c] font-semibold">
-                {booking.scheduledAt
-                  ? new Date(booking.scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
-                  : 'Waiting for Cal.com booking confirmation…'}
-              </span>
-            </div>
+            {dateLabel && (
+              <div className="flex justify-between items-center bg-[#f9f9f9] p-4 rounded-2xl">
+                <span className="text-[#9ca3af] text-[13px] font-semibold uppercase tracking-wider">Schedule</span>
+                <span className="text-[#1a1c1c] font-semibold">{dateLabel}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center bg-[#f9f9f9] p-4 rounded-2xl">
               <span className="text-[#9ca3af] text-[13px] font-semibold uppercase tracking-wider">Amount</span>
               <span className="text-[#f5820a] font-bold text-lg">₹150</span>
             </div>
           </div>
 
-          <div className="w-full flex justify-center">
-            {/* The existing component uses tailwind and basic styling, we wrap it to restrict width */}
+          <div className="w-full flex justify-center mb-4">
             <div className="w-full">
-               <CompletePaymentButton bookingId={booking.id} sessionToken={booking.sessionToken} />
+              <CompletePaymentButton bookingId={booking.id} sessionToken={booking.sessionToken} />
             </div>
+          </div>
+
+          {/* Cancel booking — only for pending bookings */}
+          <div className="flex justify-center mt-2">
+            <CancelBookingButton
+              bookingId={booking.id}
+              mentorSlug={booking.mentor.slug ?? ''}
+            />
           </div>
           
           <p className="text-center text-[#9ca3af] text-[12px] mt-6">

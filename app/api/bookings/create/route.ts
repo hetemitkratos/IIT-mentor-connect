@@ -31,10 +31,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const booking = await prisma.$transaction(async (tx) => {
-      // 1. Mandatory GC: Clean up any expired locks guaranteeing fresh un-locked slots
-      await tx.slotLock.deleteMany({
-        where: { expiresAt: { lt: new Date() } }
+      // 1. Mandatory GC: Clean up any expired locks — also cancel their associated bookings
+      const expiredLocks = await tx.slotLock.findMany({
+        where: { expiresAt: { lt: new Date() } },
+        select: { bookingId: true, mentorId: true, date: true, startTime: true },
       });
+      if (expiredLocks.length > 0) {
+        const bookingIds = expiredLocks.map(l => l.bookingId).filter(Boolean) as string[];
+        if (bookingIds.length > 0) {
+          await tx.booking.updateMany({
+            where: { id: { in: bookingIds }, status: 'pending' },
+            data: { status: 'cancelled' },
+          });
+        }
+        await tx.slotLock.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+      }
 
       // 2. Verify mentor exists and is active
       const mentor = await tx.mentor.findUnique({
@@ -51,8 +62,15 @@ export async function POST(req: NextRequest) {
           mentorId: mentorId,
           status: { in: ['pending', 'paid'] },
         },
+        select: { id: true, status: true },
       });
-      if (existingActive) throw new Error('DUPLICATE_BOOKING');
+      if (existingActive) {
+        if (existingActive.status === 'pending') {
+          // Return the existing booking so frontend can redirect to payment
+          throw Object.assign(new Error('EXISTING_PENDING'), { bookingId: existingActive.id });
+        }
+        throw new Error('DUPLICATE_BOOKING');
+      }
 
       // 4. Check if slot actually exists in Mentor's configuration
       const slotDef = await tx.slot.findUnique({
@@ -130,11 +148,17 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     // Handle Prisma P2002 Unique Constraint Violation
     if (err.code === 'P2002') {
-      return error('Slot is already taken or locked by another user.', 409);
+      return error('Slot is already taken. Please choose another.', 409);
     }
     
     // Handle internal logical errors thrown inside transaction
     if (err instanceof Error) {
+      if (err.message === 'EXISTING_PENDING') {
+        return NextResponse.json(
+          { success: false, code: 'EXISTING_PENDING', bookingId: (err as any).bookingId, message: 'You already have a reserved slot. Continue to payment.' },
+          { status: 409 }
+        );
+      }
       if (err.message === 'DUPLICATE_BOOKING') return error('You already have an active booking with this mentor', 409);
       if (err.message === 'MENTOR_INACTIVE') return error('Mentor is not active or not found', 400);
       if (err.message === 'SLOT_NOT_FOUND') return error('This slot is not configured or available', 400);

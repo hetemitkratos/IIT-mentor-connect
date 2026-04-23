@@ -116,6 +116,17 @@ export async function cancelBooking(bookingId: string, userId: string, role: str
     })
     console.log('[BOOKING_CANCELLED]', { bookingId, cancelledBy: userId, previousStatus: booking.status })
 
+    // Release the slot lock so it becomes bookable again
+    if (booking.date && booking.startTime) {
+      await tx.slotLock.deleteMany({
+        where: {
+          mentorId: booking.mentorId,
+          date:     booking.date,
+          startTime: booking.startTime,
+        },
+      })
+    }
+
     // Fix #5: Only mark refunded if payment was actually captured — avoid refunding unpaid bookings
     if (booking.payment && booking.payment.status === 'successful') {
       // TODO: Call razorpay.payments.refund(booking.payment.razorpayPaymentId) when credentials available
