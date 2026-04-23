@@ -4,9 +4,9 @@ import { z } from 'zod';
 
 const MIN_LEAD_TIME_MINUTES = 60;
 
-export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
-    const slug = params.slug;
+    const { slug } = await params;
     const { searchParams } = new URL(req.url);
     const dateQuery = searchParams.get('date');
 

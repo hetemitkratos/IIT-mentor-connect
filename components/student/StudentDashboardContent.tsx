@@ -16,8 +16,9 @@ interface MentorInfo {
 interface BookingRow {
   id: string
   status: BookingStatus
-  startTime: Date | null
-  endTime: Date | null
+  date: Date | null
+  startTime: string | null
+  endTime: string | null
   createdAt: Date
   otp: string | null
   otpVerified: boolean
@@ -44,9 +45,10 @@ function formatDate(date: Date | null) {
   if (!date) return '—'
   return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-function formatTime(date: Date | null) {
-  if (!date) return '—'
-  return new Date(date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+function formatTime(val: Date | string | null) {
+  if (!val) return '—'
+  if (typeof val === 'string') return val
+  return new Date(val).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
 }
 function getGreeting() {
   const h = new Date().getHours()
@@ -73,7 +75,9 @@ function InlineOTP({ booking }: { booking: BookingRow }) {
     if (!['scheduled', 'in_progress'].includes(booking.status) || !booking.startTime) return
     const check = () => {
       const now = new Date()
-      const start = new Date(booking.startTime!)
+      // Create native absolute JS boundaries explicitly out of combined strings mapping IST offsets
+      const dateStr = booking.date!.toISOString().split('T')[0]
+      const start = new Date(`${dateStr}T${booking.startTime}:00+05:30`)
       const diffMs = start.getTime() - 5 * 60 * 1000 - now.getTime()
       if (diffMs <= 0) {
         setIsWithinWindow(true)
@@ -361,9 +365,9 @@ function SessionCard({ booking }: { booking: BookingRow }) {
 
         {booking.startTime && (
           <div className="sd-card__datetime">
-            <span className="sd-icon-cal">📅</span>
-            <span>{formatDate(booking.startTime)}</span>
-            <span className="sd-icon-clock">🕐</span>
+            <span className="sd-icon-cal">🗓</span>
+            <span>{formatDate(booking.date ?? booking.createdAt)}</span>
+            <span className="sd-icon-clock">⏰</span>
             <span>{formatTime(booking.startTime)}</span>
           </div>
         )}

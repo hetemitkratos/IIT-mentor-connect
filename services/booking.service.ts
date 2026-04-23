@@ -1,120 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { BookingStatus, Booking } from '@prisma/client'
 
-/** Helper to conditionally expire bookings at the time of read */
-export async function expireBookingsIfNeeded(bookings: Booking[]) {
-  const expiredIds = bookings
-    .filter(b => b.status === BookingStatus.payment_pending && b.paymentExpiresAt && new Date() > b.paymentExpiresAt)
-    .map(b => b.id)
-  
-  if (expiredIds.length > 0) {
-    await prisma.booking.updateMany({
-      where: { id: { in: expiredIds } },
-      data: { status: BookingStatus.expired }
-    })
-    
-    // Mutate the local copies to reflect the change immediately
-    for (const b of bookings) {
-      if (expiredIds.includes(b.id)) {
-        b.status = BookingStatus.expired
-      }
-    }
-  }
-}
-
-
-export async function createBooking(
-  studentId: string,
-  mentorId:  string,
-) {
-  // Get student email for webhook buffer lookup
-  const student = await prisma.user.findUnique({
-    where: { id: studentId },
-    select: { email: true },
-  })
-
-  return prisma.$transaction(async (tx) => {
-    // Integrity checks
-    const mentor = await tx.mentor.findUnique({ where: { id: mentorId } })
-    if (!mentor) throw new Error('MENTOR_NOT_FOUND')
-    if (mentor.userId === studentId) throw new Error('INVALID_BOOKING')
-    if (!mentor.isActive) throw new Error('MENTOR_INACTIVE')
-
-    // Anti-spam: block real active bookings, clean up expired ones
-    const existing = await tx.booking.findFirst({
-      where: {
-        mentorId,
-        studentId,
-        status: { in: [BookingStatus.payment_pending, BookingStatus.scheduled] },
-      },
-    })
-
-    if (existing) {
-      const isExpired =
-        existing.status === BookingStatus.payment_pending &&
-        existing.paymentExpiresAt !== null &&
-        new Date(existing.paymentExpiresAt) < new Date()
-
-      if (!isExpired) {
-        throw new Error('DUPLICATE_BOOKING')
-      }
-
-      // Expired payment window — clean it up so the student can rebook
-      await tx.booking.update({
-        where: { id: existing.id },
-        data:  { status: 'expired' },
-      })
-    }
-
-    const paymentExpiresAt = new Date(Date.now() + 30 * 60 * 1000)
-
-    const booking = await tx.booking.create({
-      data: {
-        studentId,
-        mentorId,
-        status:           'payment_pending',
-        externalScheduled: true,
-        paymentExpiresAt,
-      },
-    })
-
-    // ── Retroactive webhook attach ─────────────────────────────────────────
-    // If webhook arrived BEFORE booking was created, link the buffered data now.
-    // Scope by BOTH attendeeEmail AND mentorId — prevents cross-mentor mismatch
-    // when a student has pending bookings with multiple mentors simultaneously.
-    if (student?.email) {
-      const buffered = await tx.calWebhookBuffer.findFirst({
-        where: {
-          attendeeEmail: student.email,
-          mentorId,        // ← critical: scope to the specific mentor being booked
-          processed:     false,
-        },
-        orderBy: { createdAt: 'desc' },
-      })
-
-      if (buffered) {
-        await tx.booking.update({
-          where: { id: booking.id },
-          data: {
-            scheduledAt:     buffered.scheduledAt,
-            meetingUrl:      buffered.meetingUrl,
-            attendeeEmail:   buffered.attendeeEmail,
-            externalEventId: buffered.externalEventId,
-          },
-        })
-        await tx.calWebhookBuffer.update({
-          where: { id: buffered.id },
-          data: { processed: true },
-        })
-        console.log(`[BOOKING_CREATED] Retroactively linked webhook buffer ${buffered.id} → booking ${booking.id}`)
-      }
-    }
-
-    console.log('[BOOKING_CREATED]', { bookingId: booking.id, studentId, mentorId })
-    return booking
-  })
-}
-
 
 export async function getStudentBookings(
   studentId: string,
@@ -140,7 +26,7 @@ export async function getStudentBookings(
     }),
   ])
 
-  await expireBookingsIfNeeded(bookings as unknown as Booking[])
+
 
   return { bookings, total, page, limit }
 }
@@ -155,8 +41,6 @@ export async function getBookingById(bookingId: string, userId: string) {
   })
 
   if (!booking || booking.studentId !== userId) return null
-  
-  await expireBookingsIfNeeded([booking as unknown as Booking])
   
   return booking
 }
@@ -183,7 +67,7 @@ export async function getMentorBookings(
     }),
   ])
 
-  await expireBookingsIfNeeded(bookings as unknown as Booking[])
+
 
   return { bookings, total, page, limit }
 }

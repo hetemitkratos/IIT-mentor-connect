@@ -8,55 +8,43 @@ async function handleCron(req: NextRequest) {
   if (authError) return authError
 
   const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
+  
+  // Create an absolute boundary for 'yesterday'
+  const todayStart = new Date()
+  todayStart.setUTCHours(0, 0, 0, 0)
 
-  // 1. Expire un-completed payment intents
-  const expiredPayments = await prisma.booking.updateMany({
+  // 1. Expire un-completed pending intents softly drops them via native garbage collection
+  const expiredPending = await prisma.booking.updateMany({
     where: {
-      status: { in: ['payment_pending', 'awaiting_payment'] },
-      updatedAt: { lt: thirtyMinutesAgo },
+      status: 'pending',
+      createdAt: { lt: thirtyMinutesAgo },
     },
-    data: { status: 'expired' },
+    data: { status: 'cancelled' },
   })
 
-  // 2. Expire scheduled no-shows
-  const expiredNoShows = await prisma.booking.updateMany({
+  // 2. Auto-complete strictly past sessions using absolute UTC Date bindings
+  const autoCompletedSessions = await prisma.booking.updateMany({
     where: {
-      status: 'scheduled',
-      endTime: { lt: new Date() },
-      otpVerified: false,
-    },
-    data: { status: 'expired' },
-  })
-
-  // 3. Mark completed sessions
-  const completedSessions = await prisma.booking.updateMany({
-    where: {
-      status: 'in_progress',
-      endTime: { lt: new Date() },
+      status: 'paid',
+      date: { lt: todayStart },
     },
     data: { status: 'completed' },
   })
 
-  const totalExpired = expiredPayments.count + expiredNoShows.count
+  const totalExpired = expiredPending.count
 
-  if (totalExpired > 0 || completedSessions.count > 0) {
+  if (totalExpired > 0 || autoCompletedSessions.count > 0) {
     console.log('[CRON_CLEANUP]', {
-      expiredPayments: expiredPayments.count,
-      expiredNoShows: expiredNoShows.count,
-      completedSessions: completedSessions.count,
+      expiredPending: expiredPending.count,
+      autoCompletedSessions: autoCompletedSessions.count,
     })
   }
 
   return success({
     expiredCount: totalExpired,
-    completedCount: completedSessions.count,
+    completedCount: autoCompletedSessions.count,
   })
 }
 
-export async function GET(req: NextRequest) {
-  return handleCron(req)
-}
-
-export async function POST(req: NextRequest) {
-  return handleCron(req)
-}
+export async function GET(req: NextRequest) { return handleCron(req) }
+export async function POST(req: NextRequest) { return handleCron(req) }

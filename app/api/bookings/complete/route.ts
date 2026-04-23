@@ -38,20 +38,24 @@ export async function POST(req: NextRequest) {
   if (booking.status === 'completed') {
     return error('Already completed', 400)
   }
-  if (booking.status !== 'in_progress') {
-    return error('Session is not in progress', 400)
+  if (booking.status !== 'paid') {
+    return error('Session is not active', 400)
   }
 
   // TIME CHECK
   const now = new Date()
-  if (!booking.startTime) {
+  if (!booking.startTime || !booking.date) {
     return error('Session has no start time', 400)
   }
-  if (now < booking.startTime) {
+  
+  const dateStr = booking.date.toISOString().split('T')[0];
+  const start = new Date(`${dateStr}T${booking.startTime}:00+05:30`)
+  
+  if (now < start) {
     return error('Session not started', 400)
   }
   // 5 minute buffer to prevent instant completion
-  if (now < new Date(booking.startTime.getTime() + 5 * 60 * 1000)) {
+  if (now < new Date(start.getTime() + 5 * 60 * 1000)) {
     return error('Session just started, wait a bit', 400)
   }
 

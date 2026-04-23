@@ -10,8 +10,9 @@ import SlotManager from './SlotManager'
 export interface BookingRow {
   id: string
   status: string
-  startTime: Date | null
-  endTime: Date | null
+  date: Date | null
+  startTime: string | null
+  endTime: string | null
   meetingLink: string | null
   otpVerified: boolean
   createdAt: Date
@@ -39,11 +40,21 @@ interface Props {
 /* ─────────────────────────────────────────────────────────────────
    HELPERS
 ───────────────────────────────────────────────────────────────── */
-function fmt(date: Date | null) {
-  if (!date) return '—'
-  return new Date(date).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-  })
+function fmt(date: Date | null | undefined, timeStr?: string | null) {
+  if (!date && !timeStr) return '—'
+  if (date && timeStr) {
+     const dateStr = date.toISOString().split('T')[0];
+     const d = new Date(`${dateStr}T${timeStr}:00+05:30`);
+     return d.toLocaleDateString('en-IN', {
+       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+     })
+  }
+  if (date) {
+    return new Date(date).toLocaleDateString('en-IN', {
+       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    })
+  }
+  return '—'
 }
 
 function initials(name: string | null) {
@@ -177,7 +188,7 @@ function UpcomingCard({ b }: { b: BookingRow }) {
               <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              {fmt(b.startTime)}
+              {fmt(b.date, b.startTime)}
             </span>
             <StatusBadge status={b.status} />
           </div>
@@ -257,7 +268,7 @@ function OngoingCard({ b }: { b: BookingRow }) {
                 <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                {fmt(b.startTime)}
+                {fmt(b.date, b.startTime)}
               </span>
               <StatusBadge status={b.status} />
             </div>
@@ -344,7 +355,7 @@ function CompletedRow({ b }: { b: BookingRow }) {
         <Avatar name={b.student.name} image={b.student.image} size="sm" />
         <div>
           <p className="font-medium text-[#1a1c1c] text-[15px]">{b.student.name ?? 'Student'}</p>
-          <p className="text-[11px] text-[#9ca3af] mt-0.5">{fmt(b.startTime ?? b.createdAt)}</p>
+          <p className="text-[11px] text-[#9ca3af] mt-0.5">{fmt(b.date ?? b.createdAt, b.startTime)}</p>
         </div>
       </div>
       <StatusBadge status={b.status} />
@@ -460,7 +471,7 @@ export default function MentorDashboardContent({
   const [completedFilter, setCompletedFilter] = useState<'all' | 'recent'>('recent')
 
   const filteredUpcoming = upcomingFilter === '7days'
-    ? upcomingBookings.filter(b => isWithin7Days(b.startTime))
+    ? upcomingBookings.filter(b => isWithin7Days(b.date))
     : upcomingBookings
 
   const filteredCompleted = completedFilter === 'recent'

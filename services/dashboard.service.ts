@@ -1,14 +1,11 @@
 import { prisma } from '@/lib/prisma'
 import { MENTOR_PAYOUT_RS } from '@/constants/pricing'
-import { expireBookingsIfNeeded } from './booking.service'
 import { Booking } from '@prisma/client'
 
-// Statuses that represent an active/upcoming session
-// Student sees: scheduled (confirmed) + awaiting_payment (Calendly done, needs payment) + payment_pending (just created)
-// Mentor sees: only scheduled (via getMentorDashboard overriding this default)
-const UPCOMING_STATUSES = ['scheduled', 'in_progress', 'awaiting_payment', 'payment_pending'] as const
+// Statuses that represent an active/upcoming session mapped perfectly to Phase 3 enums
+const UPCOMING_STATUSES = ['pending', 'paid'] as const
 // Statuses that represent a concluded session
-const PAST_STATUSES = ['completed', 'cancelled', 'expired'] as const
+const PAST_STATUSES = ['completed', 'cancelled'] as const
 
 export async function getStudentDashboard(studentId: string) {
   // Single parallel batch — zero extra round-trips
@@ -16,7 +13,6 @@ export async function getStudentDashboard(studentId: string) {
     prisma.booking.findMany({
       where: {
         studentId,
-        // Fix: include 'payment_complete' — student paid but hasn't booked a time slot yet
         status: { in: [...UPCOMING_STATUSES] },
       },
       include: {
@@ -40,29 +36,25 @@ export async function getStudentDashboard(studentId: string) {
       orderBy: { startTime: 'desc' },  // most recent first
       take: 5,
     }),
-    // Fix: use DB count, not in-memory length (unaffected by take limit)
     prisma.booking.count({ where: { studentId } }),
     prisma.booking.count({ where: { studentId, status: 'completed' } }),
   ])
-
-  // Run the expiration side-effect
-  await expireBookingsIfNeeded([...upcomingBookings, ...pastBookings] as unknown as Booking[])
-
-  // Move any freshly expired bookings out of upcoming and into past
-  const validUpcoming = upcomingBookings.filter(b => b.status !== 'expired')
-  const newlyExpired  = upcomingBookings.filter(b => b.status === 'expired')
   
-  const finalPast = [...newlyExpired, ...pastBookings].sort(
-    (a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0)
+  const finalPast = [...pastBookings].sort(
+    (a, b) => {
+      const aTime = a.date ? new Date(`${a.date.toISOString().split('T')[0]}T${a.startTime || '00:00'}:00+05:30`).getTime() : 0;
+      const bTime = b.date ? new Date(`${b.date.toISOString().split('T')[0]}T${b.startTime || '00:00'}:00+05:30`).getTime() : 0;
+      return bTime - aTime;
+    }
   ).slice(0, 5)
 
   return {
-    upcomingBookings: validUpcoming,
+    upcomingBookings,
     pastBookings: finalPast,
     stats: {
       totalBookings:      totalCount,
       completedSessions:  completedCount,
-      upcomingSessions:   validUpcoming.length,
+      upcomingSessions:   upcomingBookings.length,
     },
   }
 }
@@ -78,32 +70,30 @@ export async function getMentorDashboard(mentorId: string) {
     prisma.booking.count({ where: { mentorId } }),
   ])
 
-  await expireBookingsIfNeeded(allBookings as unknown as Booking[])
-
-  // Segment bookings by status
+  // Segment bookings by status natively supporting old legacy overlaps
   const now = Date.now()
 
   const ongoingBookings = allBookings.filter(b => {
-    if (b.status === 'in_progress') return true
-    if (b.status === 'scheduled' && b.startTime && b.endTime) {
+    // If it's a paid booking starting within 5 minutes or currently active
+    if (b.status === 'paid' && b.startTime && b.endTime && b.date) {
       // Show as ongoing from 5 mins before start until end time
-      const start = b.startTime.getTime() - 5 * 60 * 1000
-      const end = b.endTime.getTime() // Or maybe add a buffer after end time?
+      const dateStr = b.date.toISOString().split('T')[0];
+      const start = new Date(`${dateStr}T${b.startTime}:00+05:30`).getTime() - 5 * 60 * 1000
+      const end = new Date(`${dateStr}T${b.endTime}:00+05:30`).getTime()
       if (now >= start && now <= end) return true
     }
     return false
   })
 
+  // Pending bookings wait for payment, paid bookings are scheduled
   const upcomingBookings = allBookings.filter(b => 
-    b.status === 'scheduled' && !ongoingBookings.includes(b)
+    (b.status === 'paid' || b.status === 'pending') && !ongoingBookings.includes(b)
   )
 
   const completedBookings = allBookings.filter(b => b.status === 'completed')
-    .sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0))
+    .sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0))
   const cancelledBookings = allBookings.filter(b => b.status === 'cancelled')
-    .sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0))
-  const expiredBookings = allBookings.filter(b => b.status === 'expired')
-    .sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0))
+    .sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0))
 
   // Average rating from rated completed bookings
   const ratedBookings = completedBookings.filter(b => b.rating != null)
@@ -116,9 +106,8 @@ export async function getMentorDashboard(mentorId: string) {
     ongoingBookings,
     completedBookings,
     cancelledBookings,
-    expiredBookings,
-    // Legacy field for backward compat
-    pastBookings: [...completedBookings, ...cancelledBookings, ...expiredBookings],
+    expiredBookings: [], // Maintain empty array for backwards compatibility
+    pastBookings: [...completedBookings, ...cancelledBookings],
     stats: {
       totalSessions:     totalCount,
       completedSessions: completedCount,
@@ -129,4 +118,3 @@ export async function getMentorDashboard(mentorId: string) {
     },
   }
 }
-

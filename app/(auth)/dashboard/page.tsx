@@ -2,7 +2,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { expireBookingsIfNeeded } from '@/services/booking.service'
 import { Booking } from '@prisma/client'
 import StudentDashboardContent from '@/components/student/StudentDashboardContent'
 import type { Metadata } from 'next'
@@ -31,8 +30,6 @@ export default async function StudentDashboardPage() {
     },
     orderBy: { createdAt: 'desc' },
   })
-
-  await expireBookingsIfNeeded(bookings as unknown as Booking[])
 
   const uniqueMentors = new Set(bookings.map(b => b.mentorId)).size
 
