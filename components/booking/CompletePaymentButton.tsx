@@ -58,6 +58,11 @@ export default function CompletePaymentButton({ bookingId, sessionToken }: { boo
 
       const data = await res.json();
       
+      if (data.alreadyPaid) {
+        window.location.reload();
+        return;
+      }
+      
       if (!res.ok) {
          throw new Error(data.error || "Failed to create order")
       }

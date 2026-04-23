@@ -20,7 +20,6 @@ export default async function MentorDashboardPage() {
       id:           true,
       iit:          true,
       bio:          true,
-      calLink: true,
     },
   })
 
@@ -50,7 +49,6 @@ export default async function MentorDashboardPage() {
     <MentorDashboardContent
       mentorName={session.user.name ?? 'Mentor'}
       mentorIit={mentor.iit}
-      calLink={mentor.calLink ?? null}
       bio={mentor.bio ?? ''}
       upcomingBookings={upcomingBookings}
       ongoingBookings={ongoingBookings}

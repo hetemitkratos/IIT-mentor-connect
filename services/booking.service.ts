@@ -189,7 +189,7 @@ export async function getMentorBookings(
 }
 
 /** Statuses from which a booking can be cancelled */
-const CANCELLABLE_STATUSES = ['payment_pending', 'awaiting_payment', 'payment_complete', 'scheduled'] as const
+const CANCELLABLE_STATUSES = ['pending', 'paid'] as const
 
 export async function cancelBooking(bookingId: string, userId: string, role: string) {
   const booking = await prisma.booking.findUnique({
@@ -209,13 +209,20 @@ export async function cancelBooking(bookingId: string, userId: string, role: str
     throw new Error('INVALID_STATUS')
   }
 
-  // Enforce time window only when session is already scheduled and time is known
-  if (booking.status === 'scheduled') {
-    if (!booking.startTime) throw new Error('NO_START_TIME')
-    const hoursUntilSession =
-      (booking.startTime.getTime() - Date.now()) / (1000 * 60 * 60)
-    const requiredHours = isStudent ? 4 : 2
-    if (hoursUntilSession < requiredHours) throw new Error('CANCELLATION_WINDOW_PASSED')
+  // Strictly enforce 24-hour time window when session is formally paid/scheduled
+  if (booking.status === 'paid') {
+    if (!booking.date || !booking.startTime) throw new Error('NO_START_TIME')
+    
+    // Parse the IST absolute boundary
+    const [hours, mins] = booking.startTime.split(':').map(Number);
+    const sessionTime = new Date(booking.date);
+    // Assumes date parsed maps closely to midnight UTC, applying the logical hour delta
+    sessionTime.setUTCHours(hours - 5, mins - 30, 0, 0); // Convert from IST to UTC correctly for delta diff
+
+    const hoursUntilSession = (sessionTime.getTime() - Date.now()) / (1000 * 60 * 60)
+    
+    // The user explicitly requested > 24 hours requirement
+    if (hoursUntilSession < 24) throw new Error('CANCELLATION_WINDOW_PASSED')
   }
 
   return prisma.$transaction(async (tx) => {

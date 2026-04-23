@@ -11,11 +11,23 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
   })
 
   if (!booking || booking.studentId !== studentId) throw new Error('NOT_FOUND')
-  if (booking.status !== 'payment_pending') throw new Error('INVALID_BOOKING_STATUS')
+  if (booking.status === 'paid') {
+    return { success: true, alreadyPaid: true }
+  }
+
+  if (booking.status !== 'pending') throw new Error('INVALID_BOOKING_STATUS')
   
-  // Final Consistency Lock: Never allow payment without webhook payload arrival!
-  // UI "manual override" lets them attempt this, but backend strictly bounces if untrue.
-  if (!booking.scheduledAt) throw new Error('booking_unconfirmed')
+  // Strict consistency bound ensuring user isn't bypassing their own 10 minute slot lock
+  const lock = await prisma.slotLock.findFirst({
+    where: { bookingId: booking.id }
+  })
+
+  if (!lock) throw new Error('Slot lock missing')
+  // Support up to 2 seconds of network/validation latency drift
+  const nowTolerance = new Date(Date.now() - 2000)
+  if (lock.expiresAt < nowTolerance) {
+    throw new Error('Slot lock expired')
+  }
 
   // Multi-tab duplicate guard — prevent duplicate payments for the same mentor
   const existingActive = await prisma.booking.findFirst({
@@ -23,7 +35,7 @@ export async function createRazorpayOrder(bookingId: string, studentId: string) 
       studentId,
       mentorId: booking.mentorId,
       status: {
-        in: ['payment_pending', 'scheduled'],
+        in: ['pending', 'paid'],
       },
     },
   })
@@ -104,8 +116,8 @@ export async function verifyPayment(
     throw new Error('PAYMENT_NOT_FOUND')
   }
 
-  // Fix #2 (idempotency): payment already verified — return success without re-updating
-  if (payment.status === 'successful') return { success: true, alreadyVerified: true }
+  // Fix #2 (idempotency): payment already verified or booking marked paid — return success without re-updating
+  if (payment.status === 'successful' || payment.booking.status === 'paid') return { success: true, alreadyVerified: true }
 
   // Fix #2 (transactional): payment + booking update must be atomic
   await prisma.$transaction(async (tx) => {
@@ -115,11 +127,20 @@ export async function verifyPayment(
     })
     await tx.booking.update({
       where: { id: payment.bookingId },
-      data:  { status: 'scheduled' },   // Schedule First → Pay Later: payment = final step
+      // meetingLink is strictly set to null so the UI picks up the generic message
+      data:  { status: 'paid', meetingLink: null },
+    })
+    await tx.slotLock.deleteMany({
+      where: { bookingId: payment.bookingId },
     })
   })
 
-  console.log("Payment verified:", payment.id);
+  console.log(JSON.stringify({
+    event: "PAYMENT_SUCCESS",
+    bookingId: payment.bookingId,
+    razorpayOrderId,
+    timestamp: new Date().toISOString()
+  }));
 
   return { success: true }
 }

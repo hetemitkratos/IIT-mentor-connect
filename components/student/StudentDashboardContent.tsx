@@ -170,7 +170,7 @@ function InlineOTP({ booking }: { booking: BookingRow }) {
         </a>
       )}
       {!booking.meetingLink && canJoin && (
-        <span className="sd-join-btn sd-join-btn--disabled">Meeting link pending…</span>
+        <span className="sd-join-btn sd-join-btn--disabled">Your mentor will share the meeting link before the session.</span>
       )}
     </div>
   )

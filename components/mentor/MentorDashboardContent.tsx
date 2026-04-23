@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import SlotManager from './SlotManager'
 
 /* ─────────────────────────────────────────────────────────────────
    TYPES
@@ -20,7 +21,6 @@ export interface BookingRow {
 interface Props {
   mentorName:        string
   mentorIit:         string
-  calLink:            string | null
   upcomingBookings:  BookingRow[]
   ongoingBookings:   BookingRow[]
   completedBookings: BookingRow[]
@@ -452,7 +452,6 @@ function CalLinkSettings({ initialLink }: { initialLink: string | null }) {
 ───────────────────────────────────────────────────────────────── */
 export default function MentorDashboardContent({
   mentorName, mentorIit,
-  calLink,
   upcomingBookings, ongoingBookings,
   completedBookings, cancelledBookings,
   stats, bio,
@@ -501,8 +500,8 @@ export default function MentorDashboardContent({
           <StatCard label="Rating" value={stats.rating ? stats.rating.toFixed(1) : '—'} sub="avg. from students" />
         </div>
 
-        {/* ── Cal.com Scheduling Link ──────────────────────────────────── */}
-        <CalLinkSettings initialLink={calLink} />
+        {/* ── Slot Configuration ──────────────────────────────────── */}
+        <SlotManager />
 
         {/* ── ONGOING SESSIONS ────────────────────────────────────── */}
         {ongoingBookings.length > 0 && (

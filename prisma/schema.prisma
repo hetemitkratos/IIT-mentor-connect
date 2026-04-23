@@ -107,12 +107,43 @@ model Mentor {
 
   createdAt       DateTime  @default(now()) @map("created_at")
   bookings        Booking[]
+  slots           Slot[]
   user            User      @relation(fields: [userId], references: [id])
 
   @@index([iit])
   @@index([branch])
   @@index([year])
   @@map("mentors")
+}
+
+model Slot {
+  id        String   @id @default(cuid())
+  mentorId  String   @map("mentor_id")
+  mentor    Mentor   @relation(fields: [mentorId], references: [id])
+
+  date      DateTime
+  startTime String   @map("start_time") // Format: "16:00"
+
+  isActive  Boolean  @default(true) @map("is_active")
+
+  @@unique([mentorId, date, startTime])
+  @@index([mentorId, date])
+  @@map("slots")
+}
+
+model SlotLock {
+  id        String   @id @default(cuid())
+
+  mentorId  String   @map("mentor_id")
+  date      DateTime
+  startTime String   @map("start_time")
+  
+  bookingId String?  @map("booking_id")
+
+  expiresAt DateTime @map("expires_at")
+
+  @@unique([mentorId, date, startTime])
+  @@map("slot_locks")
 }
 
 model Booking {
@@ -122,13 +153,17 @@ model Booking {
   sessionToken    String        @unique @default(uuid()) @map("session_token")
   calEventId      String?       @map("calendly_event_id")
   meetingLink     String?       @map("meeting_link")
-  startTime       DateTime?     @map("start_time")
-  endTime         DateTime?     @map("end_time")
-  status          BookingStatus @default(payment_pending)
+  
+  status          BookingStatus @default(pending)
+  source          String        @default("internal")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   
   // Phase 3 Slot Booking Details
+  date            DateTime?
+  startTime       String?       @map("start_time")
+  endTime         String?       @map("end_time")
+
   selectedDay       String?   @map("selected_day")
   selectedSlot      String?   @map("selected_slot")
   externalScheduled Boolean   @default(false) @map("external_scheduled")
@@ -211,14 +246,10 @@ enum ApplicationStatus {
 }
 
 enum BookingStatus {
-  payment_pending
-  awaiting_payment
-  payment_complete
-  scheduled
-  in_progress
-  completed
+  pending
+  paid
   cancelled
-  expired
+  completed
 }
 
 enum PaymentStatus {
