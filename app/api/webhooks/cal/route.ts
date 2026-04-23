@@ -64,7 +64,9 @@ export async function POST(req: Request) {
   const triggerEvent = event.triggerEvent as string | undefined
   const payload  = event.payload   as Record<string, unknown> | undefined
 
-  console.log('[CAL_WEBHOOK] Received event:', triggerEvent)
+  console.log("✅ Webhook hit")
+  console.log("Event:", triggerEvent)
+  console.log("Payload:", JSON.stringify(body, null, 2))
 
   if (!triggerEvent || !payload) {
     return new Response('Missing triggerEvent or payload', { status: 400 })
