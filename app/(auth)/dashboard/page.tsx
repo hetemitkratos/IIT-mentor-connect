@@ -35,7 +35,7 @@ export default async function StudentDashboardPage() {
 
   const stats = {
     completed: bookings.filter(b => b.status === 'completed').length,
-    upcoming:  bookings.filter(b => !['completed', 'cancelled', 'expired'].includes(b.status)).length,
+    upcoming:  bookings.filter(b => b.status === 'pending' || b.status === 'paid').length,
     mentorsConsulted: uniqueMentors,
   }
 

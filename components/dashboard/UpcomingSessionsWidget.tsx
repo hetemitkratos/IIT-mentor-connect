@@ -2,11 +2,10 @@ import Link from 'next/link'
 
 // Status badge config
 const STATUS_LABEL: Record<string, string> = {
-  scheduled:        '📅 Scheduled',
-  payment_complete: '💳 Paid — Awaiting Slot',
-  payment_pending:  '⏳ Payment Pending',
-  completed:        '✅ Completed',
-  cancelled:        '❌ Cancelled',
+  paid:      '📅 Confirmed',
+  pending:   '⏳ Payment Pending',
+  completed: '✅ Completed',
+  cancelled: '❌ Cancelled',
 }
 
 interface SessionBooking {

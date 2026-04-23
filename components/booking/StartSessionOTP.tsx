@@ -33,7 +33,7 @@ export default function StartSessionOTP({
   const [currentOtpGeneratedAt, setCurrentOtpGeneratedAt] = useState<Date | null>(otpGeneratedAt)
 
   useEffect(() => {
-    if (status !== 'scheduled' || !startTime) return
+    if (status !== 'paid' || !startTime) return
 
     const updateTimer = () => {
       const now = new Date()

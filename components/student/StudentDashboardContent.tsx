@@ -72,7 +72,7 @@ function InlineOTP({ booking }: { booking: BookingRow }) {
   const router = useRouter()
 
   useEffect(() => {
-    if (!['scheduled', 'in_progress'].includes(booking.status) || !booking.startTime) return
+    if (booking.status !== 'paid' || !booking.startTime) return
     const check = () => {
       const now = new Date()
       // Create native absolute JS boundaries explicitly out of combined strings mapping IST offsets
@@ -126,7 +126,7 @@ function InlineOTP({ booking }: { booking: BookingRow }) {
   const otpValid = Boolean(otp && !isExpired)
   const canJoin = isVerified || otpValid
 
-  if (!['scheduled', 'in_progress'].includes(booking.status)) return null
+  if (booking.status !== 'paid') return null
 
   return (
     <div className="sd-otp-zone">

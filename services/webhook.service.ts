@@ -55,7 +55,7 @@ export async function handleRazorpayWebhook(body: string, signature: string) {
       })
       await tx.booking.update({
         where: { id: payment.bookingId },
-        data:  { status: 'scheduled' },
+        data:  { status: 'paid' },
       })
     })
 

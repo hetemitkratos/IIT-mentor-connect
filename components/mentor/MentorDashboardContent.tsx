@@ -152,10 +152,10 @@ function CompletedHeader({ filter, onFilter }: { filter: 'all' | 'recent'; onFil
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; text: string; label: string }> = {
-    scheduled:   { bg: 'bg-[#f0fdf4]', text: 'text-[#16a34a]', label: 'Confirmed' },
-    in_progress: { bg: 'bg-[#fff7ed]', text: 'text-[#d96e08]', label: 'In Progress' },
-    completed:   { bg: 'bg-[#fdf6dc]', text: 'text-[#B8962E]', label: 'Completed' },
-    cancelled:   { bg: 'bg-[#f9fafb]', text: 'text-[#9ca3af]', label: 'Cancelled' },
+    pending:   { bg: 'bg-[#fff7ed]', text: 'text-[#d96e08]', label: 'Pending Payment' },
+    paid:      { bg: 'bg-[#f0fdf4]', text: 'text-[#16a34a]', label: 'Confirmed' },
+    completed: { bg: 'bg-[#fdf6dc]', text: 'text-[#B8962E]', label: 'Completed' },
+    cancelled: { bg: 'bg-[#f9fafb]', text: 'text-[#9ca3af]', label: 'Cancelled' },
   }
   const s = map[status] ?? { bg: 'bg-[#f9fafb]', text: 'text-[#9ca3af]', label: status }
   return (
