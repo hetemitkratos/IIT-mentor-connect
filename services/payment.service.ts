@@ -119,6 +119,19 @@ export async function verifyPayment(
   // Fix #2 (idempotency): payment already verified or booking marked paid — return success without re-updating
   if (payment.status === 'successful' || payment.booking.status === 'paid') return { success: true, alreadyVerified: true }
 
+  // Fix: Cancel-race guard — if booking was cancelled between payment initiation and verification, reject
+  if (payment.booking.status !== 'pending') {
+    console.error(JSON.stringify({
+      event: 'PAYMENT_VERIFY_REJECTED',
+      reason: 'booking_not_pending',
+      bookingStatus: payment.booking.status,
+      bookingId: payment.bookingId,
+      razorpayOrderId,
+      timestamp: new Date().toISOString(),
+    }))
+    throw new Error('BOOKING_NOT_PENDING')
+  }
+
   // Fix #2 (transactional): payment + booking update must be atomic
   await prisma.$transaction(async (tx) => {
     await tx.payment.update({

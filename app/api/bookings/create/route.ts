@@ -31,16 +31,19 @@ export async function POST(req: NextRequest) {
 
   try {
     const booking = await prisma.$transaction(async (tx) => {
-      // 1. Mandatory GC: Clean up any expired locks — also cancel their associated bookings
+      // 1. Mandatory GC: Cancel pending bookings whose slot lock has expired (strict bookingId linkage)
       const expiredLocks = await tx.slotLock.findMany({
         where: { expiresAt: { lt: new Date() } },
-        select: { bookingId: true, mentorId: true, date: true, startTime: true },
+        select: { bookingId: true },
       });
       if (expiredLocks.length > 0) {
-        const bookingIds = expiredLocks.map(l => l.bookingId).filter(Boolean) as string[];
-        if (bookingIds.length > 0) {
+        // Only cancel the EXACT booking tied to each lock — never cancel by mentorId/date/time
+        const expiredBookingIds = expiredLocks
+          .map(l => l.bookingId)
+          .filter((id): id is string => id !== null);
+        if (expiredBookingIds.length > 0) {
           await tx.booking.updateMany({
-            where: { id: { in: bookingIds }, status: 'pending' },
+            where: { id: { in: expiredBookingIds }, status: 'pending' },
             data: { status: 'cancelled' },
           });
         }

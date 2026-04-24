@@ -29,6 +29,8 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
   const [bookingId, setBookingId]       = useState<string | null>(null)
   const [pendingTime, setPendingTime]   = useState<string | null>(null)
   const [pendingDate, setPendingDate]   = useState<string | null>(null)
+  const [lockCreatedAt, setLockCreatedAt] = useState<Date | null>(null)
+  const [countdown, setCountdown]       = useState<string | null>(null)
   const [error, setError]               = useState<string | null>(null)
 
   // ── 1. On mount: check for an existing pending booking with this mentor ──
@@ -46,6 +48,8 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
           setBookingId(existing.id)
           setPendingTime(existing.startTime ?? null)
           setPendingDate(existing.date ? new Date(existing.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : null)
+          // Capture booking creation time for countdown — lock expires 10 min after createdAt
+          setLockCreatedAt(existing.createdAt ? new Date(existing.createdAt) : null)
           setPhase('pending')
         } else {
           setPhase('pick')
@@ -66,6 +70,33 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
     const istDate   = new Date(today.getTime() + istOffset)
     setDate(istDate.toISOString().split('T')[0])
   }
+
+  // ── Countdown ticker (for pending + ready phases) ──
+  useEffect(() => {
+    if (phase !== 'pending' && phase !== 'ready') { setCountdown(null); return }
+    const LOCK_TTL_MS = 10 * 60 * 1000 // 10 minutes
+    const origin = lockCreatedAt ?? new Date() // fallback: now
+    const expiresAt = new Date(origin.getTime() + LOCK_TTL_MS)
+
+    const tick = () => {
+      const remaining = expiresAt.getTime() - Date.now()
+      if (remaining <= 0) {
+        setCountdown('Slot lock expired')
+        // Auto-transition: lock gone, bounce back to pick
+        setPhase('pick')
+        setBookingId(null)
+        initDate()
+        return
+      }
+      const m = Math.floor(remaining / 60000)
+      const s = Math.floor((remaining % 60000) / 1000)
+      setCountdown(`${m}:${s.toString().padStart(2, '0')} remaining`)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, lockCreatedAt])
 
   // ── 2. Fetch slots when date changes (only in pick mode) ──
   useEffect(() => {
@@ -114,6 +145,7 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
       }
 
       setBookingId(json.data.bookingId)
+      setLockCreatedAt(new Date()) // start countdown from now
       setPhase('ready')
     } catch (err: any) {
       setError(err.message || 'Network error')
@@ -137,6 +169,10 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
         setBookingId(null)
         setPendingTime(null)
         setPendingDate(null)
+        setLockCreatedAt(null)
+        setCountdown(null)
+        // Fix 4: refresh server state + go back to pick with fresh date
+        router.refresh()
         setPhase('pick')
         initDate()
       } else {
@@ -168,7 +204,7 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
         <div className="p-5 bg-[#fff7ed] border border-[#f5820a]/30 rounded-2xl flex flex-col gap-3">
           <div className="flex items-start gap-3">
             <span className="text-2xl mt-0.5">⏳</span>
-            <div>
+            <div className="flex-1">
               <p className="font-semibold text-[#1a1c1c] text-[15px]">Reserved slot waiting for payment</p>
               {pendingTime && (
                 <p className="text-[13px] text-[#585f6c] mt-0.5">
@@ -181,6 +217,14 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
               </p>
             </div>
           </div>
+          {/* Countdown timer */}
+          {countdown && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-white border border-[#f5820a]/20 rounded-xl">
+              <div className="w-2 h-2 rounded-full bg-[#f5820a] animate-pulse shrink-0" />
+              <span className="text-[13px] font-mono font-semibold text-[#f5820a]">{countdown}</span>
+              <span className="text-[12px] text-[#9ca3af] ml-auto">to hold slot</span>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -222,9 +266,15 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
         <p className="text-[#585f6c] text-sm">
           You have <strong>10 minutes</strong> to complete your payment before the slot is released.
         </p>
+        {countdown && (
+          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-[#fff7ed] border border-[#f5820a]/20 rounded-xl mx-auto">
+            <div className="w-2 h-2 rounded-full bg-[#f5820a] animate-pulse" />
+            <span className="text-[14px] font-mono font-semibold text-[#f5820a]">{countdown}</span>
+          </div>
+        )}
         <button
           onClick={() => bookingId && router.push(`/payment/${bookingId}`)}
-          className="mt-4 px-6 py-3 bg-[#f5820a] hover:bg-[#e07509] text-white font-semibold rounded-full shadow-lg transition-transform focus:scale-95"
+          className="mt-2 px-6 py-3 bg-[#f5820a] hover:bg-[#e07509] text-white font-semibold rounded-full shadow-lg transition-transform focus:scale-95"
         >
           Proceed to Payment →
         </button>

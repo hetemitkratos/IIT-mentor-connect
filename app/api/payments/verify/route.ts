@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'INVALID_SIGNATURE')
       return error('Payment signature verification failed', 400)
+    if (err instanceof Error && err.message === 'BOOKING_NOT_PENDING')
+      return error('This booking is no longer active. It may have been cancelled.', 409)
     return error('Payment verification failed', 500)
   }
 }
