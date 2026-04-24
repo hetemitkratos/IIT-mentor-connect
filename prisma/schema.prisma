@@ -145,6 +145,8 @@ model Availability {
   startTime String  @map("start_time")  // e.g. "06:00"
   endTime   String  @map("end_time")    // e.g. "22:00"
 
+  disabledSlots String[] @default([]) @map("disabled_slots") // List of "HH:MM" slots within the window that the mentor toggled OFF
+
   isActive  Boolean @default(true) @map("is_active")
 
   @@unique([mentorId, dayOfWeek])

@@ -10,6 +10,7 @@ const daySchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6),
   startTime: z.string().regex(/^([01]\d|2[0-3]):(00|30)$/, 'startTime must be HH:00 or HH:30'),
   endTime:   z.string().regex(/^([01]\d|2[0-3]):(00|30)$/, 'endTime must be HH:00 or HH:30'),
+  disabledSlots: z.array(z.string()).default([]),
   isActive:  z.boolean().default(true),
 })
 
@@ -65,11 +66,13 @@ export async function POST(req: NextRequest) {
             dayOfWeek: day.dayOfWeek,
             startTime: day.startTime,
             endTime:   day.endTime,
+            disabledSlots: day.disabledSlots,
             isActive:  day.isActive,
           },
           update: {
             startTime: day.startTime,
             endTime:   day.endTime,
+            disabledSlots: day.disabledSlots,
             isActive:  day.isActive,
           },
         })

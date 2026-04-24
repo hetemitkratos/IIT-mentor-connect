@@ -93,8 +93,12 @@ export async function GET(
       const avail = availMap.get(dayOfWeek)
       if (!avail) { result[dateStr] = false; continue }
 
-      // Generate slots and apply lead-time filter
+      // Generate slots and subtract disabled ones
       let slots = generateSlots(avail.startTime, avail.endTime)
+      if (avail.disabledSlots && avail.disabledSlots.length > 0) {
+        const disabledSet = new Set(avail.disabledSlots)
+        slots = slots.filter(t => !disabledSet.has(t))
+      }
       slots = filterByLeadTime(slots, dateStr)
 
       if (slots.length === 0) { result[dateStr] = false; continue }

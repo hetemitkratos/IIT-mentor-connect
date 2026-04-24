@@ -22,6 +22,7 @@ interface DayConfig {
   dayOfWeek: number
   startTime: string
   endTime:   string
+  disabledSlots: string[]
   isActive:  boolean
 }
 
@@ -42,6 +43,7 @@ const DEFAULT_DAYS: DayConfig[] = Array.from({ length: 7 }, (_, i) => ({
   dayOfWeek: i,
   startTime: '09:00',
   endTime:   '13:00',
+  disabledSlots: [],
   isActive:  false,
 }))
 
@@ -65,9 +67,9 @@ export default function SlotManager() {
 
         const serverRows: DayConfig[] = json.data
         const loaded = DEFAULT_DAYS.map(d => {
-          const match = serverRows.find((r: DayConfig) => r.dayOfWeek === d.dayOfWeek)
+          const match = serverRows.find((r: any) => r.dayOfWeek === d.dayOfWeek)
           return match
-            ? { dayOfWeek: d.dayOfWeek, startTime: match.startTime, endTime: match.endTime, isActive: match.isActive }
+            ? { dayOfWeek: d.dayOfWeek, startTime: match.startTime, endTime: match.endTime, disabledSlots: match.disabledSlots ?? [], isActive: match.isActive }
             : d
         })
         setInitialDays(loaded)
@@ -80,7 +82,23 @@ export default function SlotManager() {
   }, [])
 
   const updateDay = (idx: number, patch: Partial<DayConfig>) => {
-    setDays(prev => prev.map((d, i) => i === idx ? { ...d, ...patch } : d))
+    setDays(prev => prev.map((d, i) => {
+      if (i !== idx) return d
+      // If changing times, we should probably clear disabled slots that fall outside the new window,
+      // but for simplicity and robustness we can just keep them (they won't be generated anyway).
+      return { ...d, ...patch }
+    }))
+    setMsg(null)
+  }
+
+  const toggleSlot = (idx: number, slotTime: string) => {
+    setDays(prev => prev.map((d, i) => {
+      if (i !== idx) return d
+      const disabled = d.disabledSlots.includes(slotTime)
+        ? d.disabledSlots.filter(t => t !== slotTime)
+        : [...d.disabledSlots, slotTime]
+      return { ...d, disabledSlots: disabled }
+    }))
     setMsg(null)
   }
 
@@ -110,7 +128,11 @@ export default function SlotManager() {
   }
 
   const activeDays = days.filter(d => d.isActive)
-  const totalSlots = activeDays.reduce((sum, d) => sum + previewSlots(d.startTime, d.endTime).length, 0)
+  const totalSlots = activeDays.reduce((sum, d) => {
+    const rawSlots = previewSlots(d.startTime, d.endTime)
+    const validCount = rawSlots.filter(t => !d.disabledSlots.includes(t)).length
+    return sum + validCount
+  }, 0)
 
   return (
     <div className="bg-white border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 mb-10 shadow-sm flex flex-col relative pb-32">
@@ -225,28 +247,36 @@ export default function SlotManager() {
                             <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c]" /> Bookable Slots
                           </span>
                           <motion.span 
-                            key={slots.length}
+                            key={slots.length - day.disabledSlots.length}
                             initial={{ opacity: 0, y: -4 }}
                             animate={{ opacity: 1, y: 0 }}
                             className="text-[14px] font-semibold text-[#c2410c]"
                           >
-                            {slots.length} {slots.length === 1 ? 'slot' : 'slots'} available
+                            {slots.length - day.disabledSlots.length} {(slots.length - day.disabledSlots.length) === 1 ? 'slot' : 'slots'} available
                           </motion.span>
                         </div>
                         
                         {slots.length > 0 ? (
                           <div className="flex flex-wrap gap-3">
-                            {slots.map((t, i) => (
-                              <motion.div
-                                key={`${t}-${i}`}
-                                initial={{ opacity: 0, scale: 0.95, y: 5 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.2) }}
-                                className="px-5 py-3 text-[16px] font-semibold rounded-xl bg-[#ffedd5] text-[#9a3412] active:scale-95 hover:bg-[#fed7aa] select-none transition-all cursor-pointer border border-[#fed7aa]/40 hover:border-[#fb923c] shadow-sm hover:shadow"
-                              >
-                                {t}
-                              </motion.div>
-                            ))}
+                            {slots.map((t, i) => {
+                              const isDisabled = day.disabledSlots.includes(t)
+                              return (
+                                <motion.div
+                                  key={`${t}-${i}`}
+                                  initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                                  transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.2) }}
+                                  onClick={() => toggleSlot(idx, t)}
+                                  className={`px-5 py-3 text-[16px] font-semibold rounded-xl select-none transition-all cursor-pointer shadow-sm active:scale-95 border ${
+                                    isDisabled
+                                      ? 'bg-slate-100/70 text-slate-400 border-slate-200 line-through decoration-slate-300 hover:bg-slate-200/50'
+                                      : 'bg-[#ffedd5] text-[#9a3412] border-[#fed7aa]/40 hover:bg-[#fed7aa] hover:border-[#fb923c] hover:shadow'
+                                  }`}
+                                >
+                                  {t}
+                                </motion.div>
+                              )
+                            })}
                           </div>
                         ) : (
                           <motion.div 

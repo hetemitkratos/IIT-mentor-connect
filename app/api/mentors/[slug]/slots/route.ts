@@ -41,6 +41,10 @@ export async function GET(
 
     // Generate raw slots from the availability window
     let slots = generateSlots(availability.startTime, availability.endTime)
+    if (availability.disabledSlots && availability.disabledSlots.length > 0) {
+      const disabledSet = new Set(availability.disabledSlots)
+      slots = slots.filter(t => !disabledSet.has(t))
+    }
 
     // Enforce 1-hour lead time
     slots = filterByLeadTime(slots, dateQuery)
