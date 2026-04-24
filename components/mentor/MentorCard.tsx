@@ -90,7 +90,7 @@ export function MentorCard({ mentor, onSelect }: MentorCardProps) {
           {languages.map(lang => (
             <span
               key={lang}
-              className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#fff7ed] text-[#934b00] border border-[#f5820a]/20"
+              className="text-xs font-medium px-2 py-1 rounded-md bg-neutral-100 text-neutral-700"
             >
               {lang}
             </span>
