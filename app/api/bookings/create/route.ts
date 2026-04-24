@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { checkRateLimit } from '@/lib/security';
 import { success, error } from '@/lib/api-response';
 import { z } from 'zod';
+import { generateSlots, filterByLeadTime } from '@/services/slot-generator';
 
 const createBookingSchema = z.object({
   mentorId: z.string().uuid('Invalid mentor ID'),
@@ -75,12 +76,30 @@ export async function POST(req: NextRequest) {
         throw new Error('DUPLICATE_BOOKING');
       }
 
-      // 4. Check if slot actually exists in Mentor's configuration
-      const slotDef = await tx.slot.findUnique({
-        where: { mentorId_date_startTime: { mentorId, date: parsedDate, startTime } }
+      // 4. Validate slot against Availability (backend source of truth)
+      // Derive IST day-of-week from the date
+      const [yr, mo, dy] = date.split('-').map(Number);
+      const istDayDate = new Date(Date.UTC(yr, mo - 1, dy, 0, 0, 0));
+      istDayDate.setUTCMinutes(-330);
+      const bookingDayOfWeek = istDayDate.getUTCDay();
+
+      const availability = await tx.availability.findFirst({
+        where: { mentorId, dayOfWeek: bookingDayOfWeek, isActive: true },
       });
-      if (!slotDef || !slotDef.isActive) {
-        throw new Error('SLOT_NOT_FOUND');
+      if (!availability) {
+        throw new Error('INVALID_SLOT');
+      }
+
+      // Verify startTime falls within the generated slot list
+      const validSlots = generateSlots(availability.startTime, availability.endTime);
+      if (!validSlots.includes(startTime)) {
+        throw new Error('INVALID_SLOT');
+      }
+
+      // Enforce lead-time (>= 1 hour from now)
+      const leadValid = filterByLeadTime([startTime], date);
+      if (leadValid.length === 0) {
+        throw new Error('SLOT_TOO_SOON');
       }
 
       // 5. Calculate Time boundaries
@@ -164,7 +183,8 @@ export async function POST(req: NextRequest) {
       }
       if (err.message === 'DUPLICATE_BOOKING') return error('You already have an active booking with this mentor', 409);
       if (err.message === 'MENTOR_INACTIVE') return error('Mentor is not active or not found', 400);
-      if (err.message === 'SLOT_NOT_FOUND') return error('This slot is not configured or available', 400);
+      if (err.message === 'INVALID_SLOT') return error('Invalid or unavailable slot', 400);
+      if (err.message === 'SLOT_TOO_SOON') return error('This slot is too soon to book. Please allow at least 1 hour in advance.', 400);
     }
     
     console.error('[BOOKING_CREATE_ERROR]', err);

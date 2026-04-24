@@ -1,103 +1,88 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { generateSlots, filterByLeadTime } from '@/services/slot-generator'
 
-const MIN_LEAD_TIME_MINUTES = 60;
-
-export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
   try {
-    const { slug } = await params;
-    const { searchParams } = new URL(req.url);
-    const dateQuery = searchParams.get('date');
+    const { slug } = await params
+    const dateQuery = new URL(req.url).searchParams.get('date')
 
     if (!dateQuery) {
-      return NextResponse.json({ error: "Missing date parameter" }, { status: 400 });
+      return NextResponse.json({ error: 'Missing date parameter' }, { status: 400 })
     }
 
     const mentor = await prisma.mentor.findUnique({
       where: { slug, isActive: true },
-    });
-
+    })
     if (!mentor) {
-      return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Mentor not found' }, { status: 404 })
     }
 
-    const parsedDate = new Date(dateQuery);
-    parsedDate.setUTCHours(0, 0, 0, 0);
+    // Parse date → IST day-of-week
+    // dateQuery is YYYY-MM-DD. Interpret it in IST so weekday is correct.
+    const [year, month, day] = dateQuery.split('-').map(Number)
+    const istDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0)) // UTC midnight = IST 05:30 of same day
+    istDate.setUTCMinutes(-330) // shift back 5h30 so getUTCDay() gives the IST day
+    const dayOfWeek = istDate.getUTCDay()
 
-    // [Throttled Garbage Collection] Run SlotLock cleanup dynamically on reads (10% chance to save DB load)
+    // Fetch mentor's availability for this weekday
+    const availability = await prisma.availability.findFirst({
+      where: { mentorId: mentor.id, dayOfWeek, isActive: true },
+    })
+
+    if (!availability) {
+      const response = NextResponse.json({ success: true, data: [] })
+      response.headers.set('Cache-Control', 'no-store')
+      return response
+    }
+
+    // Generate raw slots from the availability window
+    let slots = generateSlots(availability.startTime, availability.endTime)
+
+    // Enforce 1-hour lead time
+    slots = filterByLeadTime(slots, dateQuery)
+
+    if (slots.length === 0) {
+      const response = NextResponse.json({ success: true, data: [] })
+      response.headers.set('Cache-Control', 'no-store')
+      return response
+    }
+
+    // Lightweight GC: 10% chance to clean up expired locks on slot reads
     if (Math.random() < 0.1) {
-      await prisma.slotLock.deleteMany({
-        where: { expiresAt: { lt: new Date() } },
-      }).catch(err => console.error("[SLOTLOCK_CLEANUP_ERROR]", err)); // Avoid blocking response
+      prisma.slotLock.deleteMany({ where: { expiresAt: { lt: new Date() } } })
+        .catch(e => console.error('[SLOTLOCK_GC_ERROR]', e))
     }
 
-    const [slots, locks, bookings] = await Promise.all([
-      // 1. Fetch mentor's active slots for this day
-      prisma.slot.findMany({
-        where: { mentorId: mentor.id, date: parsedDate, isActive: true },
-        orderBy: { startTime: 'asc' },
-      }),
-      // 2. Fetch active SlotLocks (expires in the future)
+    // Fetch booked + locked times for this mentor on this date
+    const parsedDate = new Date(`${dateQuery}T00:00:00.000Z`)
+    const [locks, bookings] = await Promise.all([
       prisma.slotLock.findMany({
         where: { mentorId: mentor.id, date: parsedDate, expiresAt: { gt: new Date() } },
+        select: { startTime: true },
       }),
-      // 3. Fetch Bookings blocking the slots
       prisma.booking.findMany({
-        where: {
-          mentorId: mentor.id,
-          date: parsedDate,
-          status: { in: ['pending', 'paid'] },
-        },
-      })
-    ]);
+        where: { mentorId: mentor.id, date: parsedDate, status: { in: ['pending', 'paid'] } },
+        select: { startTime: true },
+      }),
+    ])
 
-    // Build fast lookup sets for locks and bookings
-    const lockedTimes = new Set(locks.map(l => l.startTime));
-    const bookedTimes = new Set(bookings.map(b => b.startTime));
+    const blocked = new Set([
+      ...locks.map(l => l.startTime),
+      ...bookings.map(b => b.startTime).filter(Boolean) as string[],
+    ])
 
-    const now = new Date();
-    // Build availability avoiding overlaps and enforcing minimum lead time
-    const availableSlots = slots.filter((slot) => {
-      // 🔴 Check if booked
-      if (bookedTimes.has(slot.startTime)) return false;
+    const available = slots.filter(t => !blocked.has(t))
 
-      // 🔴 Check if locked
-      if (lockedTimes.has(slot.startTime)) return false;
-
-      // 🔴 Check if min lead time has passed
-      // Parse slot.startTime ("16:00" IST string) into a Date
-      // Assuming dateQuery is standard local YYYY-MM-DD
-      const [hours, mins] = slot.startTime.split(':').map(Number);
-      
-      // Creating the actual slot absolute timestamp (in IST)
-      // Wait, date is stored as UTC 00:00:00 representation of the literal day string?
-      // It's safer to reconstruct it locally using India offset (+05:30).
-      // A quick ISO trick if parsedDate represents UTC string:
-      // Let's do absolute arithmetic:
-      const slotLocalTime = new Date(`${dateQuery}T${slot.startTime}:00+05:30`);
-      
-      const leadTimeThreshold = new Date(now.getTime() + MIN_LEAD_TIME_MINUTES * 60000);
-
-      // If slot is closer than 60 mins from right now, it's blocked.
-      if (slotLocalTime < leadTimeThreshold) return false;
-
-      return true;
-    });
-
-    const response = NextResponse.json({
-      success: true,
-      data: availableSlots.map(s => s.startTime),
-    });
-    
-    // Fix #4: Prevent caching of highly dynamic slot availability
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    response.headers.set('Expires', '0');
-    response.headers.set('Surrogate-Control', 'no-store');
-
-    return response;
-  } catch (error) {
-    console.error("[STUDENT_SLOTS_GET]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const response = NextResponse.json({ success: true, data: available })
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    response.headers.set('Expires', '0')
+    return response
+  } catch (err) {
+    console.error('[STUDENT_SLOTS_GET]', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

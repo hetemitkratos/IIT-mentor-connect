@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface SlotBookingUIProps {
@@ -12,19 +12,51 @@ interface SlotBookingUIProps {
 type Phase =
   | 'loading'     // checking for existing pending booking on mount
   | 'pending'     // user has an existing pending booking — show resume/cancel UI
-  | 'pick'        // normal slot selection
+  | 'calendar'    // monthly calendar picker
+  | 'slots'       // time slot grid for selected date
   | 'confirm'     // confirmation modal
   | 'creating'    // POST in-flight
   | 'ready'       // booking created, ready to pay
   | 'cancelling'  // cancel in-flight
 
+// ── Calendar helpers ───────────────────────────────────────────────────────
+
+function getISTDateString(d: Date): string {
+  // Format a JS Date as YYYY-MM-DD in IST
+  const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000)
+  return ist.toISOString().split('T')[0]
+}
+
+function todayIST(): string {
+  return getISTDateString(new Date())
+}
+
+function getMonthKey(year: number, month: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}`
+}
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate()
+}
+
+function firstDayOfMonth(year: number, month: number): number {
+  // 0=Sun 1=Mon …
+  return new Date(year, month, 1).getDay()
+}
+
+const WEEKDAY_HEADERS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+// ── Component ──────────────────────────────────────────────────────────────
+
 export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: SlotBookingUIProps) {
   const router = useRouter()
 
+  // ── State ──
   const [phase, setPhase]               = useState<Phase>('loading')
-  const [date, setDate]                 = useState<string>('')
   const [slots, setSlots]               = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [bookingId, setBookingId]       = useState<string | null>(null)
   const [pendingTime, setPendingTime]   = useState<string | null>(null)
@@ -33,13 +65,20 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
   const [countdown, setCountdown]       = useState<string | null>(null)
   const [error, setError]               = useState<string | null>(null)
 
-  // ── 1. On mount: check for an existing pending booking with this mentor ──
+  // Calendar state
+  const now = new Date()
+  const [calYear, setCalYear]     = useState(now.getFullYear())
+  const [calMonth, setCalMonth]   = useState(now.getMonth())
+  const [availability, setAvailability] = useState<Record<string, boolean>>({})
+  const [loadingCal, setLoadingCal]     = useState(false)
+
+  // ── 1. On mount: check for existing pending booking ──
   useEffect(() => {
     const checkExisting = async () => {
       try {
         const res  = await fetch(`/api/bookings/my?status=pending&limit=5`)
         const json = await res.json()
-        if (!res.ok) { setPhase('pick'); initDate(); return }
+        if (!res.ok) { setPhase('calendar'); fetchCalendar(calYear, calMonth); return }
 
         const bookings: any[] = json.data?.bookings ?? []
         const existing = bookings.find((b: any) => b.mentorId === mentorId)
@@ -47,45 +86,81 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
         if (existing) {
           setBookingId(existing.id)
           setPendingTime(existing.startTime ?? null)
-          setPendingDate(existing.date ? new Date(existing.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : null)
-          // Capture booking creation time for countdown — lock expires 10 min after createdAt
+          setPendingDate(existing.date
+            ? new Date(existing.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+            : null
+          )
           setLockCreatedAt(existing.createdAt ? new Date(existing.createdAt) : null)
           setPhase('pending')
         } else {
-          setPhase('pick')
-          initDate()
+          setPhase('calendar')
+          fetchCalendar(calYear, calMonth)
         }
       } catch {
-        setPhase('pick')
-        initDate()
+        setPhase('calendar')
+        fetchCalendar(calYear, calMonth)
       }
     }
     checkExisting()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mentorId])
 
-  const initDate = () => {
-    const today     = new Date()
-    const istOffset = 5.5 * 60 * 60 * 1000
-    const istDate   = new Date(today.getTime() + istOffset)
-    setDate(istDate.toISOString().split('T')[0])
-  }
+  // ── Calendar availability fetch ──
+  const fetchCalendar = useCallback(async (year: number, month: number) => {
+    setLoadingCal(true)
+    try {
+      const monthKey = getMonthKey(year, month)
+      const res  = await fetch(`/api/mentors/${mentorSlug}/availability/calendar?month=${monthKey}`)
+      const json = await res.json()
+      if (res.ok) setAvailability(json.data || {})
+    } catch { /* keep stale */ } finally {
+      setLoadingCal(false)
+    }
+  }, [mentorSlug])
 
-  // ── Countdown ticker (for pending + ready phases) ──
+  // Refetch calendar when month changes
+  useEffect(() => {
+    if (phase === 'calendar' || phase === 'slots') {
+      fetchCalendar(calYear, calMonth)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calYear, calMonth])
+
+  // ── Fetch slots for selected date ──
+  useEffect(() => {
+    if (!selectedDate || phase !== 'slots') return
+    setSlots([])
+    setSelectedTime(null)
+    setError(null)
+
+    const fetchSlots = async () => {
+      setLoadingSlots(true)
+      try {
+        const res  = await fetch(`/api/mentors/${mentorSlug}/slots?date=${selectedDate}`)
+        const json = await res.json()
+        if (res.ok) setSlots(json.data || [])
+      } catch { /* ignore */ } finally {
+        setLoadingSlots(false)
+      }
+    }
+    fetchSlots()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, mentorSlug, phase])
+
+  // ── Countdown ticker ──
   useEffect(() => {
     if (phase !== 'pending' && phase !== 'ready') { setCountdown(null); return }
-    const LOCK_TTL_MS = 10 * 60 * 1000 // 10 minutes
-    const origin = lockCreatedAt ?? new Date() // fallback: now
+    const LOCK_TTL_MS = 10 * 60 * 1000
+    const origin    = lockCreatedAt ?? new Date()
     const expiresAt = new Date(origin.getTime() + LOCK_TTL_MS)
 
     const tick = () => {
       const remaining = expiresAt.getTime() - Date.now()
       if (remaining <= 0) {
         setCountdown('Slot lock expired')
-        // Auto-transition: lock gone, bounce back to pick
-        setPhase('pick')
+        setPhase('calendar')
         setBookingId(null)
-        initDate()
+        fetchCalendar(calYear, calMonth)
         return
       }
       const m = Math.floor(remaining / 60000)
@@ -98,28 +173,9 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, lockCreatedAt])
 
-  // ── 2. Fetch slots when date changes (only in pick mode) ──
-  useEffect(() => {
-    if (!date || phase !== 'pick') return
-    setSelectedTime(null)
-    setError(null)
-
-    const fetchSlots = async () => {
-      setLoadingSlots(true)
-      try {
-        const res  = await fetch(`/api/mentors/${mentorSlug}/slots?date=${date}`)
-        const json = await res.json()
-        if (res.ok) setSlots(json.data || [])
-      } catch { /* ignore */ } finally {
-        setLoadingSlots(false)
-      }
-    }
-    fetchSlots()
-  }, [date, mentorSlug, phase])
-
   // ── 3. Create booking ──
   const confirmAndLock = async () => {
-    if (!date || !selectedTime) return
+    if (!selectedDate || !selectedTime) return
     setError(null)
     setPhase('creating')
 
@@ -127,29 +183,28 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
       const res  = await fetch('/api/bookings/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mentorId, date, startTime: selectedTime }),
+        body: JSON.stringify({ mentorId, date: selectedDate, startTime: selectedTime }),
       })
       const json = await res.json()
 
       if (!res.ok) {
-        // Existing pending booking → redirect to payment
         if (res.status === 409 && json.code === 'EXISTING_PENDING') {
           router.push(`/payment/${json.bookingId}`)
           return
         }
         setError(json.message || json.error || 'Failed to lock slot. Please try again.')
-        setPhase('pick')
+        setPhase('slots')
         setSlots(prev => prev.filter(t => t !== selectedTime))
         setSelectedTime(null)
         return
       }
 
       setBookingId(json.data.bookingId)
-      setLockCreatedAt(new Date()) // start countdown from now
+      setLockCreatedAt(new Date())
       setPhase('ready')
-    } catch (err: any) {
-      setError(err.message || 'Network error')
-      setPhase('pick')
+    } catch (e: any) {
+      setError(e.message || 'Network error')
+      setPhase('slots')
     }
   }
 
@@ -166,15 +221,11 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
         body: JSON.stringify({ bookingId }),
       })
       if (res.ok) {
-        setBookingId(null)
-        setPendingTime(null)
-        setPendingDate(null)
-        setLockCreatedAt(null)
-        setCountdown(null)
-        // Fix 4: refresh server state + go back to pick with fresh date
+        setBookingId(null); setPendingTime(null); setPendingDate(null)
+        setLockCreatedAt(null); setCountdown(null)
         router.refresh()
-        setPhase('pick')
-        initDate()
+        setPhase('calendar')
+        fetchCalendar(calYear, calMonth)
       } else {
         const json = await res.json()
         setError(json.error || 'Failed to cancel booking.')
@@ -184,6 +235,23 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
       setError('Network error while cancelling.')
       setPhase('pending')
     }
+  }
+
+  // ── Calendar navigation ──
+  const prevMonth = () => {
+    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11) }
+    else setCalMonth(m => m - 1)
+  }
+  const nextMonth = () => {
+    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) }
+    else setCalMonth(m => m + 1)
+  }
+
+  const handleDayClick = (dateStr: string) => {
+    if (!availability[dateStr]) return // not available
+    if (dateStr < todayIST()) return    // past
+    setSelectedDate(dateStr)
+    setPhase('slots')
   }
 
   // ── RENDER: loading ──
@@ -196,7 +264,7 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
     )
   }
 
-  // ── RENDER: pending — user has an existing unpaid booking ──
+  // ── RENDER: pending ──
   if (phase === 'pending' || phase === 'cancelling') {
     const isCancelling = phase === 'cancelling'
     return (
@@ -213,11 +281,10 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
                 </p>
               )}
               <p className="text-[12px] text-[#9ca3af] mt-1">
-                Complete your payment to confirm the session, or cancel to pick a different slot.
+                Complete payment to confirm, or cancel to pick a different slot.
               </p>
             </div>
           </div>
-          {/* Countdown timer */}
           {countdown && (
             <div className="flex items-center gap-2 px-3 py-2 bg-white border border-[#f5820a]/20 rounded-xl">
               <div className="w-2 h-2 rounded-full bg-[#f5820a] animate-pulse shrink-0" />
@@ -226,26 +293,14 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
             </div>
           )}
         </div>
-
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg">
-            {error}
-          </div>
-        )}
-
+        {error && <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg">{error}</div>}
         <div className="flex gap-3">
-          <button
-            onClick={handleCancel}
-            disabled={isCancelling}
-            className="flex-1 py-2.5 text-sm font-semibold text-[#585f6c] border border-gray-300 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
+          <button onClick={handleCancel} disabled={isCancelling}
+            className="flex-1 py-2.5 text-sm font-semibold text-[#585f6c] border border-gray-300 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50">
             {isCancelling ? 'Cancelling…' : 'Cancel Booking'}
           </button>
-          <button
-            onClick={() => bookingId && router.push(`/payment/${bookingId}`)}
-            disabled={isCancelling}
-            className="flex-1 py-2.5 text-sm font-semibold text-white bg-[#f5820a] rounded-full shadow hover:bg-[#e07509] transition-colors disabled:opacity-50"
-          >
+          <button onClick={() => bookingId && router.push(`/payment/${bookingId}`)} disabled={isCancelling}
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-[#f5820a] rounded-full shadow hover:bg-[#e07509] transition-colors disabled:opacity-50">
             Continue to Payment →
           </button>
         </div>
@@ -253,7 +308,7 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
     )
   }
 
-  // ── RENDER: ready — booking just created ──
+  // ── RENDER: ready ──
   if (phase === 'ready') {
     return (
       <div className="flex flex-col gap-4 text-center py-6">
@@ -263,105 +318,187 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
           </svg>
         </div>
         <h3 className="text-xl font-semibold text-[#1a1c1c]">Slot Reserved!</h3>
-        <p className="text-[#585f6c] text-sm">
-          You have <strong>10 minutes</strong> to complete your payment before the slot is released.
-        </p>
+        <p className="text-[#585f6c] text-sm">You have <strong>10 minutes</strong> to complete payment before the slot is released.</p>
         {countdown && (
           <div className="flex items-center justify-center gap-2 px-4 py-2 bg-[#fff7ed] border border-[#f5820a]/20 rounded-xl mx-auto">
             <div className="w-2 h-2 rounded-full bg-[#f5820a] animate-pulse" />
             <span className="text-[14px] font-mono font-semibold text-[#f5820a]">{countdown}</span>
           </div>
         )}
-        <button
-          onClick={() => bookingId && router.push(`/payment/${bookingId}`)}
-          className="mt-2 px-6 py-3 bg-[#f5820a] hover:bg-[#e07509] text-white font-semibold rounded-full shadow-lg transition-transform focus:scale-95"
-        >
+        <button onClick={() => bookingId && router.push(`/payment/${bookingId}`)}
+          className="mt-2 px-6 py-3 bg-[#f5820a] hover:bg-[#e07509] text-white font-semibold rounded-full shadow-lg focus:scale-95 transition-transform">
           Proceed to Payment →
         </button>
       </div>
     )
   }
 
-  // ── RENDER: pick / confirm / creating ──
+  // ── RENDER: calendar + slots ──
+  const today         = todayIST()
+  const totalDays     = daysInMonth(calYear, calMonth)
+  const firstWeekday  = firstDayOfMonth(calYear, calMonth)
+  const monthKey      = getMonthKey(calYear, calMonth)
+
+  // Prevent navigating to past months
+  const nowDate = new Date()
+  const isPrevDisabled = calYear < nowDate.getFullYear() ||
+    (calYear === nowDate.getFullYear() && calMonth <= nowDate.getMonth())
+
   return (
     <div className="flex flex-col gap-6">
 
-      {/* Date Picker */}
-      <div className="flex flex-col gap-2">
-        <label className="text-[11px] font-semibold tracking-[1.5px] uppercase text-[#585f6c]">
-          Select Date
-        </label>
-        <input
-          type="date"
-          value={date}
-          min={new Date().toISOString().split('T')[0]}
-          onChange={e => { setDate(e.target.value); setPhase('pick') }}
-          className="w-full px-4 py-3 bg-white border border-[rgba(221,193,175,0.4)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f5820a]/30"
-        />
-      </div>
-
-      {/* Slots Grid */}
-      <div className="flex flex-col gap-2">
-        <label className="text-[11px] font-semibold tracking-[1.5px] uppercase text-[#585f6c]">
-          Available Times (IST)
-        </label>
-
-        {loadingSlots ? (
-          <div className="grid grid-cols-3 gap-2 animate-pulse">
-            <div className="h-10 bg-gray-200 rounded-lg" />
-            <div className="h-10 bg-gray-200 rounded-lg" />
-            <div className="h-10 bg-gray-200 rounded-lg" />
+      {/* ── CALENDAR ── */}
+      <div className="flex flex-col gap-3">
+        {/* Month nav */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={prevMonth}
+            disabled={isPrevDisabled}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 text-[#585f6c] transition-colors"
+          >
+            ‹
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[14px] font-semibold text-[#1a1c1c]">
+              {MONTH_NAMES[calMonth]} {calYear}
+            </span>
+            {loadingCal && <div className="w-3 h-3 border border-[#f5820a] border-t-transparent rounded-full animate-spin" />}
           </div>
-        ) : slots.length === 0 ? (
-          <p className="text-[13px] text-[#9ca3af] py-4">No available slots for this date.</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-3">
-            {slots.map(time => (
+          <button
+            onClick={nextMonth}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-[#585f6c] transition-colors"
+          >
+            ›
+          </button>
+        </div>
+
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 gap-1">
+          {WEEKDAY_HEADERS.map(h => (
+            <div key={h} className="text-center text-[11px] font-semibold text-[#9ca3af] py-1">
+              {h}
+            </div>
+          ))}
+
+          {/* Empty cells before month start */}
+          {Array.from({ length: firstWeekday }).map((_, i) => (
+            <div key={`empty-${i}`} />
+          ))}
+
+          {/* Day cells */}
+          {Array.from({ length: totalDays }).map((_, i) => {
+            const d       = i + 1
+            const dateStr = `${monthKey}-${String(d).padStart(2, '0')}`
+            const isPast  = dateStr < today
+            const isAvail = availability[dateStr] === true
+            const isSel   = dateStr === selectedDate
+            const isToday = dateStr === today
+
+            let cellClass = 'w-full aspect-square flex items-center justify-center rounded-xl text-[13px] font-semibold transition-all duration-150 '
+
+            if (isPast) {
+              cellClass += 'text-[#c9c9c9] cursor-not-allowed'
+            } else if (!isAvail) {
+              cellClass += 'text-[#c9c9c9] cursor-not-allowed'
+            } else if (isSel) {
+              cellClass += 'bg-[#f5820a] text-white shadow-md scale-105 cursor-pointer'
+            } else if (isAvail) {
+              cellClass += 'ring-2 ring-[#f5820a]/60 text-[#f5820a] hover:bg-[#f5820a] hover:text-white cursor-pointer'
+              if (isToday) cellClass += ' font-bold'
+            }
+
+            return (
               <button
-                key={time}
-                onClick={() => { setSelectedTime(time); setPhase('confirm') }}
-                className="py-2.5 px-1 rounded-xl text-[14px] font-semibold transition-all duration-200 bg-white border border-[rgba(221,193,175,0.5)] text-[#1a1c1c] hover:border-[#f5820a] hover:text-[#f5820a]"
+                key={dateStr}
+                onClick={() => handleDayClick(dateStr)}
+                disabled={isPast || !isAvail}
+                className={cellClass}
+                title={isAvail ? `Book on ${dateStr}` : undefined}
               >
-                {time}
+                {d}
               </button>
-            ))}
+            )
+          })}
+        </div>
+
+        {/* Legend */}
+        <div className="flex gap-4 mt-1">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-md ring-2 ring-[#f5820a]/60" />
+            <span className="text-[11px] text-[#9ca3af]">Available</span>
           </div>
-        )}
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-md bg-gray-100" />
+            <span className="text-[11px] text-[#9ca3af]">Unavailable</span>
+          </div>
+        </div>
       </div>
 
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg">
-          {error}
+      {/* ── SLOTS GRID (shown when a date is selected) ── */}
+      {phase === 'slots' && selectedDate && (
+        <div className="flex flex-col gap-3 border-t border-[rgba(221,193,175,0.25)] pt-5">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-semibold tracking-[1.5px] uppercase text-[#585f6c]">
+              Available Times — {new Date(selectedDate + 'T00:00:00+05:30').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} (IST)
+            </label>
+            <button
+              onClick={() => { setPhase('calendar'); setSelectedDate(''); setSelectedTime(null) }}
+              className="text-[12px] text-[#9ca3af] hover:text-[#f5820a] transition-colors"
+            >
+              ← Change date
+            </button>
+          </div>
+
+          {loadingSlots ? (
+            <div className="grid grid-cols-3 gap-2 animate-pulse">
+              {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded-xl" />)}
+            </div>
+          ) : slots.length === 0 ? (
+            <p className="text-[13px] text-[#9ca3af] py-4">No available slots for this date.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {slots.map(time => (
+                <button
+                  key={time}
+                  onClick={() => { setSelectedTime(time); setPhase('confirm') }}
+                  className="py-2.5 px-1 rounded-xl text-[14px] font-semibold transition-all duration-200 bg-white border border-[rgba(221,193,175,0.5)] text-[#1a1c1c] hover:border-[#f5820a] hover:text-[#f5820a]"
+                >
+                  {time}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg">{error}</div>
+      )}
+
+      {/* ── CONFIRM MODAL ── */}
       {phase === 'confirm' && selectedTime && (
-        <div className="mt-4 p-5 border border-[#ddc1af] bg-[#fff7ed] rounded-2xl flex flex-col items-center text-center shadow-lg">
+        <div className="p-5 border border-[#ddc1af] bg-[#fff7ed] rounded-2xl flex flex-col items-center text-center shadow-lg">
           <h4 className="text-lg font-semibold text-[#1a1c1c] mb-1">Confirm Slot?</h4>
           <p className="text-sm text-[#585f6c] mb-5">
-            Locking{' '}<strong className="text-[#f5820a]">{selectedTime}</strong>{' '}on{' '}{date}.
+            Locking{' '}<strong className="text-[#f5820a]">{selectedTime} IST</strong>{' '}on{' '}
+            {new Date(selectedDate + 'T00:00:00+05:30').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.
           </p>
           <div className="flex gap-3 w-full">
-            <button
-              onClick={() => setPhase('pick')}
-              className="flex-1 py-2 text-sm font-semibold text-[#585f6c] border border-gray-300 rounded-full hover:bg-gray-100"
-            >
+            <button onClick={() => setPhase('slots')}
+              className="flex-1 py-2 text-sm font-semibold text-[#585f6c] border border-gray-300 rounded-full hover:bg-gray-100">
               Go Back
             </button>
-            <button
-              onClick={confirmAndLock}
-              className="flex-1 py-2 text-sm font-semibold text-white bg-[#1a1c1c] rounded-full shadow-md hover:bg-black"
-            >
+            <button onClick={confirmAndLock}
+              className="flex-1 py-2 text-sm font-semibold text-white bg-[#1a1c1c] rounded-full shadow-md hover:bg-black">
               Confirm & Lock
             </button>
           </div>
         </div>
       )}
 
-      {/* Creating overlay */}
+      {/* ── CREATING OVERLAY ── */}
       {phase === 'creating' && (
-        <div className="mt-4 p-5 border border-[#ddc1af] bg-white rounded-2xl flex flex-col items-center justify-center">
+        <div className="p-5 border border-[#ddc1af] bg-white rounded-2xl flex flex-col items-center justify-center">
           <div className="w-6 h-6 border-2 border-[#f5820a] border-t-transparent rounded-full animate-spin mb-3" />
           <p className="text-sm text-[#585f6c] animate-pulse">Locking slot securely…</p>
         </div>

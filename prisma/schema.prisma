@@ -87,14 +87,14 @@ model Mentor {
   // Primary scheduling link (Cal.com)
   calLink         String?   @map("calendly_link")
 
-  // Deprecated OAuth fields — retained for zero-downtime, not written to
+  // @deprecated — legacy Cal.com OAuth fields; retained for zero-downtime, never written to
   calAccessToken  String?   @map("cal_access_token")
   calRefreshToken String?   @map("cal_refresh_token")
   calUsername     String?   @map("cal_username")
   calConnected    Boolean   @default(false) @map("cal_connected")
   calEventTypeId  String?   @map("cal_event_type_id")
 
-  // Deprecated availability fields — retained for zero-downtime, not written to
+  // @deprecated — old JSON blob availability; retained for zero-downtime, never written to
   availableSlots         Json?    @map("available_slots")
   timezone               String?  @default("Asia/Kolkata")
   availabilityConfigured Boolean  @default(false) @map("availability_configured")
@@ -107,7 +107,9 @@ model Mentor {
 
   createdAt       DateTime  @default(now()) @map("created_at")
   bookings        Booking[]
+  // @deprecated — Slot model is soft-deprecated; use Availability instead
   slots           Slot[]
+  availability    Availability[]
   user            User      @relation(fields: [userId], references: [id])
 
   @@index([iit])
@@ -116,6 +118,8 @@ model Mentor {
   @@map("mentors")
 }
 
+// @deprecated — Slot model is soft-deprecated. Use Availability for weekly recurring schedules.
+// Slot rows are no longer written. Table retained for zero-downtime. Will be dropped in a future cleanup migration.
 model Slot {
   id        String   @id @default(cuid())
   mentorId  String   @map("mentor_id")
@@ -129,6 +133,23 @@ model Slot {
   @@unique([mentorId, date, startTime])
   @@index([mentorId, date])
   @@map("slots")
+}
+
+// Weekly recurring availability — replaces the Slot model.
+model Availability {
+  id        String  @id @default(cuid())
+  mentorId  String  @map("mentor_id")
+  mentor    Mentor  @relation(fields: [mentorId], references: [id])
+
+  dayOfWeek Int     @map("day_of_week") // 0 = Sunday, 1 = Monday ... 6 = Saturday
+  startTime String  @map("start_time")  // e.g. "06:00"
+  endTime   String  @map("end_time")    // e.g. "22:00"
+
+  isActive  Boolean @default(true) @map("is_active")
+
+  @@unique([mentorId, dayOfWeek])
+  @@index([mentorId, dayOfWeek])
+  @@map("availability")
 }
 
 model SlotLock {
@@ -218,6 +239,7 @@ model WebhookEvent {
   @@map("webhook_events")
 }
 
+// @deprecated — legacy Cal.com webhook buffer; retained for zero-downtime.
 /// Buffer to prevent race conditions when Cal.com webhook arrives
 /// before the student's booking record has been created.
 model CalWebhookBuffer {
