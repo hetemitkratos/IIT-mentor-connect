@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
           date: parsedDate,
           startTime,
           endTime: endTimeFormatted,
+          startDateTime: new Date(`${date}T${startTime}:00+05:30`),
           status: 'pending',
           source: 'internal',
         }

@@ -4,6 +4,8 @@ import { verifyRazorpayPaymentSignature } from '@/lib/hmac'
 import { createHmac } from 'crypto'
 import { SESSION_PRICE_PAISE } from '@/constants/pricing'
 import { createMeetLink } from './meeting.service'
+import { sendBookingEmail } from './email.service'
+import { scheduleReminder } from './reminder.service'
 
 export async function createRazorpayOrder(bookingId: string, studentId: string) {
   const booking = await prisma.booking.findUnique({
@@ -188,12 +190,49 @@ export async function verifyPayment(
           meetingStatus: "created"
         }
       })
+
+      // Fire independently, don't await
+      sendBookingEmail({
+        to: studentData.email,
+        studentName: studentData.name || 'Student',
+        mentorName: mentorData.user.name || 'Mentor',
+        date: payment.booking.date!.toDateString(),
+        time: payment.booking.startTime!,
+        meetLink: meetLink
+      }).catch(err => console.error("Async email failed", err))
+
+      // Lock granular reminder exactly 30 minutes offset 
+      if (payment.booking.startDateTime) {
+        scheduleReminder({
+          bookingId: payment.booking.id,
+          startDateTime: payment.booking.startDateTime
+        }).catch(err => console.error("QStash schedule err", err))
+      }
+
     } catch (err) {
       console.error("Meet link generation failed", err)
       await prisma.booking.update({
         where: { id: payment.bookingId },
         data: { meetingStatus: "pending" }
       })
+
+      // Send email without link
+      sendBookingEmail({
+        to: studentData.email,
+        studentName: studentData.name || 'Student',
+        mentorName: mentorData.user.name || 'Mentor',
+        date: payment.booking.date!.toDateString(),
+        time: payment.booking.startTime!,
+        meetLink: null
+      }).catch(err => console.error("Async email failed", err))
+
+      // Lock granular reminder exactly 30 minutes offset 
+      if (payment.booking.startDateTime) {
+        scheduleReminder({
+          bookingId: payment.booking.id,
+          startDateTime: payment.booking.startDateTime
+        }).catch(err => console.error("QStash schedule err", err))
+      }
     }
   }
 

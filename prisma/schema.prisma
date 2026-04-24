@@ -184,6 +184,9 @@ model Booking {
   meetingLink     String?       @map("meeting_link")
   meetingStatus   String?       @map("meeting_status")
   
+  startDateTime   DateTime?     @map("start_date_time") // Added for timezone-safe Cron optimizations
+  reminderSent    Boolean       @default(false) @map("reminder_sent")
+  
   status          BookingStatus @default(pending)
   source          String        @default("internal")
   createdAt       DateTime      @default(now()) @map("created_at")
