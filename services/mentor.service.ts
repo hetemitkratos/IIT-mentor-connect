@@ -74,7 +74,6 @@ export async function getMentorBySlug(slug: string) {
       languages: true,
       bio: true,
       profileImage: true,
-      calLink: true,
       user: { select: { name: true, image: true } },
     },
   })
@@ -87,15 +86,19 @@ export async function getMentorByUserId(userId: string) {
 export async function getMentorAvailability(mentorId: string) {
   const mentor = await prisma.mentor.findUnique({
     where: { id: mentorId },
-    select: { id: true, isActive: true, calLink: true, user: { select: { name: true } } },
+    select: { id: true, isActive: true, user: { select: { name: true } } },
   })
   return mentor
 }
 
 export async function updateMentorProfile(
   userId: string,
-  data: { bio?: string; languages?: string[]; calLink?: string; year?: number }
+  data: { bio?: string; languages?: string[]; year?: number }
 ) {
+  // Ensure English is always in the languages list
+  if (data.languages && !data.languages.includes('English')) {
+    data.languages = ['English', ...data.languages]
+  }
   return prisma.mentor.update({
     where: { userId },
     data,
@@ -124,7 +127,6 @@ export interface CreateMentorInput {
   year:         number
   languages:    string[]
   bio:          string
-  calLink?: string
   profileImage?: string
 }
 
@@ -138,15 +140,19 @@ export async function createMentor(input: CreateMentorInput) {
   const existing = await prisma.mentor.findUnique({ where: { userId: input.userId } })
   if (existing) throw new Error('MENTOR_ALREADY_EXISTS')
 
+  // Ensure English is always in the languages list
+  const languages = input.languages.includes('English')
+    ? input.languages
+    : ['English', ...input.languages]
+
   return prisma.mentor.create({
     data: {
       userId:       input.userId,
       iit:          input.iit,
       branch:       input.branch,
       year:         input.year,
-      languages:    input.languages,
+      languages,
       bio:          input.bio,
-      calLink:      input.calLink,
       profileImage: input.profileImage,
     },
     include: { user: { select: { name: true, image: true } } },

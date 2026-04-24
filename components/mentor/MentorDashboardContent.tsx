@@ -174,6 +174,7 @@ function EmptyState({ message }: { message: string }) {
 }
 
 function UpcomingCard({ b }: { b: BookingRow }) {
+  const isPaid = b.status === 'paid'
   return (
     <div className="flex items-center justify-between py-4 border-b border-[rgba(221,193,175,0.15)] last:border-0">
       <div className="flex items-center gap-5">
@@ -194,7 +195,8 @@ function UpcomingCard({ b }: { b: BookingRow }) {
           </div>
         </div>
       </div>
-      {b.meetingLink ? (
+      {/* Meeting link ONLY for paid/confirmed sessions */}
+      {isPaid && b.meetingLink ? (
         <a
           href={b.meetingLink}
           target="_blank"
@@ -203,9 +205,13 @@ function UpcomingCard({ b }: { b: BookingRow }) {
         >
           Join Meet →
         </a>
-      ) : (
+      ) : isPaid ? (
         <span className="px-4 py-2 text-[#9ca3af] text-[13px] font-medium rounded-full bg-[#f9fafb]">
-          Awaiting slot
+          Awaiting link
+        </span>
+      ) : (
+        <span className="px-4 py-2 text-[#d96e08] text-[13px] font-medium rounded-full bg-[#fff7ed]">
+          Awaiting payment
         </span>
       )}
     </div>
@@ -363,103 +369,10 @@ function CompletedRow({ b }: { b: BookingRow }) {
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   CAL.COM LINK SETTINGS CARD
-───────────────────────────────────────────────────────────────── */
-function CalLinkSettings({ initialLink }: { initialLink: string | null }) {
-  const router = useRouter()
-  const [link, setLink] = useState(initialLink ?? '')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-
-  const isValid = link.includes('cal.com')
-
-  const handleSave = async () => {
-    setSaving(true)
-    setError(null)
-    setSaved(false)
-    try {
-      const res = await fetch('/api/mentor/update-cal-link', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ calLink: link }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error ?? 'Failed to save link')
-        return
-      }
-      setSaved(true)
-      router.refresh()
-    } catch {
-      setError('Network error. Try again.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="bg-white border border-[rgba(221,193,175,0.2)] rounded-2xl p-6 mb-10">
-      <div className="flex flex-col gap-4">
-        <div>
-          <h2 className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#585f6c]">Cal.com Booking Link</h2>
-          <p className="text-[#6b7280] text-[13px] leading-relaxed mt-1 max-w-lg">
-            Paste your Cal.com booking link. Students will schedule their session using the embedded calendar on your profile page.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 max-w-xl">
-          <input
-            type="url"
-            value={link}
-            onChange={e => { setLink(e.target.value); setSaved(false) }}
-            placeholder="https://cal.com/your-name/30min"
-            className="flex-1 px-4 py-2.5 text-sm border border-[rgba(221,193,175,0.4)] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#f5820a]/30 text-[#1a1c1c] placeholder:text-[#9ca3af]"
-          />
-          <button
-            onClick={handleSave}
-            disabled={saving || !link.trim() || !isValid}
-            className="px-5 py-2.5 bg-[#f5820a] text-white text-[13px] font-semibold rounded-full hover:bg-[#e07509] transition-colors shadow-sm disabled:opacity-50 shrink-0"
-          >
-            {saving ? 'Saving…' : 'Save Link'}
-          </button>
-        </div>
-
-        {!isValid && link.trim() && (
-          <p className="text-[12px] text-[#b45309]">Must be a cal.com link (e.g. https://cal.com/your-name/30min)</p>
-        )}
-        {error && <p className="text-[12px] text-[#ba1a1a]">{error}</p>}
-        {saved && (
-          <p className="text-[12px] text-[#16a34a] flex items-center gap-1.5">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            Link saved successfully
-          </p>
-        )}
-
-        {link && isValid && (
-          <div className="flex items-center gap-2 mt-1">
-            <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" />
-            <span className="text-[12px] text-[#16a34a] font-medium">Scheduling link active</span>
-            <a
-              href={link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[12px] text-[#9ca3af] hover:text-[#585f6c] underline transition-colors ml-1"
-            >
-              Preview →
-            </a>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 /* ─────────────────────────────────────────────────────────────────
    MAIN DASHBOARD
+
 ───────────────────────────────────────────────────────────────── */
 export default function MentorDashboardContent({
   mentorName, mentorIit,
