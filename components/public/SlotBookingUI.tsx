@@ -350,32 +350,32 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
       {/* ── CALENDAR ── */}
       <div className="flex flex-col gap-3">
         {/* Month nav */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-2">
           <button
             onClick={prevMonth}
             disabled={isPrevDisabled}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 text-[#585f6c] transition-colors"
+            className="p-1.5 w-8 h-8 flex items-center justify-center rounded-md hover:bg-[#f3f4f6] disabled:opacity-30 text-[#585f6c] transition-colors"
           >
             ‹
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-[14px] font-semibold text-[#1a1c1c]">
+            <span className="text-[18px] font-semibold text-[#1a1c1c]">
               {MONTH_NAMES[calMonth]} {calYear}
             </span>
             {loadingCal && <div className="w-3 h-3 border border-[#f5820a] border-t-transparent rounded-full animate-spin" />}
           </div>
           <button
             onClick={nextMonth}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-[#585f6c] transition-colors"
+            className="p-1.5 w-8 h-8 flex items-center justify-center rounded-md hover:bg-[#f3f4f6] text-[#585f6c] transition-colors"
           >
             ›
           </button>
         </div>
 
         {/* Weekday headers */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-[14px] justify-items-center">
           {WEEKDAY_HEADERS.map(h => (
-            <div key={h} className="text-center text-[11px] font-semibold text-[#9ca3af] py-1">
+            <div key={h} className="text-center text-[13px] font-medium text-[#6b7280] pb-2.5">
               {h}
             </div>
           ))}
@@ -394,16 +394,14 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
             const isSel   = dateStr === selectedDate
             const isToday = dateStr === today
 
-            let cellClass = 'w-full aspect-square flex items-center justify-center rounded-xl text-[13px] font-semibold transition-all duration-150 '
+            let cellClass = 'w-[40px] h-[40px] flex items-center justify-center rounded-[10px] text-[15px] font-medium transition-all duration-200 border '
 
-            if (isPast) {
-              cellClass += 'text-[#c9c9c9] cursor-not-allowed'
-            } else if (!isAvail) {
-              cellClass += 'text-[#c9c9c9] cursor-not-allowed'
+            if (isPast || !isAvail) {
+              cellClass += 'text-[#d1d5db] border-[#e5e7eb] cursor-not-allowed'
             } else if (isSel) {
-              cellClass += 'bg-[#f5820a] text-white shadow-md scale-105 cursor-pointer'
+              cellClass += 'bg-[#f5820a] text-white border-[#f5820a] shadow-[0_2px_8px_rgba(245,130,10,0.25)] cursor-pointer'
             } else if (isAvail) {
-              cellClass += 'ring-2 ring-[#f5820a]/60 text-[#f5820a] hover:bg-[#f5820a] hover:text-white cursor-pointer'
+              cellClass += 'bg-white border-[#fcd9b6] text-[#1f2937] hover:bg-[#fff7ed] hover:-translate-y-[1px] cursor-pointer'
               if (isToday) cellClass += ' font-bold'
             }
 
@@ -422,14 +420,18 @@ export default function SlotBookingUI({ mentorId, mentorName, mentorSlug }: Slot
         </div>
 
         {/* Legend */}
-        <div className="flex gap-4 mt-1">
+        <div className="flex gap-4 mt-3 text-[13px] text-[#6b7280] justify-center w-full">
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-md ring-2 ring-[#f5820a]/60" />
-            <span className="text-[11px] text-[#9ca3af]">Available</span>
+            <div className="w-2.5 h-2.5 rounded-full border border-[#fcd9b6] bg-white" />
+            <span>Available</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-md bg-gray-100" />
-            <span className="text-[11px] text-[#9ca3af]">Unavailable</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#f5820a]" />
+            <span>Selected</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full border border-[#e5e7eb] bg-transparent" />
+            <span>Unavailable</span>
           </div>
         </div>
       </div>
