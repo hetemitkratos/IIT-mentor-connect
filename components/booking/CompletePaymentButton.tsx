@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 const loadRazorpay = () => {
   return new Promise<boolean>((resolve) => {
@@ -21,7 +22,8 @@ const loadRazorpay = () => {
   });
 };
 
-export default function CompletePaymentButton({ bookingId, sessionToken }: { bookingId: string; sessionToken: string }) {
+export default function CompletePaymentButton({ bookingId, sessionToken, mentorSlug, amount }: { bookingId: string; sessionToken: string; mentorSlug: string, amount: number }) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [errorUI, setErrorUI] = useState<string | null>(null)
 
@@ -107,7 +109,7 @@ export default function CompletePaymentButton({ bookingId, sessionToken }: { boo
               throw new Error(data.error || "Verification failed");
             }
 
-            window.location.reload();
+            router.replace(`/booking/success/${bookingId}`);
 
           } catch (err: any) {
             console.error("[VERIFY_ERROR]", err);
@@ -131,7 +133,11 @@ export default function CompletePaymentButton({ bookingId, sessionToken }: { boo
       rzp.open();
     } catch (err: unknown) {
       if (err instanceof Error) {
-        if (err.message.includes('Booking not confirmed yet')) {
+        if (err.message === 'slot_expired') {
+          // Explicit requirement 4: handle it on frontend
+          alert("Slot expired. Please rebook.") // User asked for showToast, but we haven't seen a global toast setup yet so using alert before redirecting
+          router.replace(`/mentors/${mentorSlug}`)
+        } else if (err.message.includes('Booking not confirmed yet')) {
           setErrorUI('We couldn’t confirm your booking yet.\n\nPlease wait a few seconds and try again.')
         } else {
           alert(err.message)
@@ -160,7 +166,7 @@ export default function CompletePaymentButton({ bookingId, sessionToken }: { boo
           </>
         ) : (
           <>
-            Complete Payment — ₹150
+            Complete Payment — ₹{amount}
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>

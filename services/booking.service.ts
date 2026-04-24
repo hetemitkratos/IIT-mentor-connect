@@ -42,7 +42,9 @@ export async function getBookingById(bookingId: string, userId: string) {
 
   if (!booking || booking.studentId !== userId) return null
   
-  return booking
+  const slotLock = await prisma.slotLock.findFirst({ where: { bookingId } })
+
+  return { ...booking, expiresAt: slotLock?.expiresAt || null }
 }
 
 export async function getMentorBookings(

@@ -32,7 +32,7 @@ export default function CancelBookingButton({ bookingId, mentorSlug }: Props) {
       const json = await res.json()
 
       if (res.ok) {
-        router.push(`/mentors/${mentorSlug}`)
+        router.replace(`/mentors/${mentorSlug}`)
       } else {
         setError(json.error || 'Failed to cancel. Please try again.')
         setConfirmed(false)
