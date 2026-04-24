@@ -52,6 +52,24 @@ export default async function BookingSuccessPage({ params }: { params: Promise<{
           )}
         </div>
 
+        {booking.meetingUrl ? (
+          <a
+            href={booking.meetingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center py-4 mb-4 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl font-semibold text-[15px] transition"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Join Google Meet
+          </a>
+        ) : (
+          <div className="mb-6 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl w-full">
+            <p className="text-[13px] font-medium text-neutral-700">Your meeting link is being prepared. It will appear here shortly.</p>
+          </div>
+        )}
+
         <Link href="/dashboard" className="w-full flex items-center justify-center py-4 bg-[#f5820a] hover:bg-[#e07509] text-white rounded-xl font-semibold text-[15px] transition shadow-[0_8px_24px_rgba(245,130,10,0.35)] active:scale-[0.98]">
           View Dashboard
         </Link>

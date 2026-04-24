@@ -207,7 +207,7 @@ function UpcomingCard({ b }: { b: BookingRow }) {
         </a>
       ) : isPaid ? (
         <span className="px-4 py-2 text-[#9ca3af] text-[13px] font-medium rounded-full bg-[#f9fafb]">
-          Awaiting link
+          If meeting link is not ready, it will be shared shortly.
         </span>
       ) : (
         <span className="px-4 py-2 text-[#d96e08] text-[13px] font-medium rounded-full bg-[#fff7ed]">
@@ -291,7 +291,7 @@ function OngoingCard({ b }: { b: BookingRow }) {
           </a>
         ) : (
           <span className="px-4 py-2 text-[#9ca3af] text-[13px] font-medium rounded-full bg-white">
-            Awaiting link
+            If meeting link is not ready, it will be shared shortly.
           </span>
         )}
       </div>

@@ -10,6 +10,18 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: [
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/calendar.events"
+          ].join(" "),
+          prompt: "consent",
+          access_type: "offline"
+        }
+      }
     }),
   ],
   session: {
@@ -77,7 +89,28 @@ export const authOptions: NextAuthOptions = {
       return true
     },
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      if (account) {
+        token.accessToken = account.access_token
+        token.refreshToken = account.refresh_token
+        if (account.expires_at) {
+          token.expiresAt = account.expires_at * 1000
+        }
+
+        // Persist token specifically binding securely to the database over the JWT boundary
+        if (user?.id) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              googleAccessToken: account.access_token,
+              googleRefreshToken: account.refresh_token,
+              googleTokenExpiry: account.expires_at ? new Date(account.expires_at * 1000) : null,
+              googleTokenScope: account.scope
+            }
+          })
+        }
+      }
+
       // On first sign-in, user object is present with the DB id
       if (user) {
         console.log('[AUTH] jwt callback (first sign-in) — user:', { id: user.id, email: user.email })
@@ -111,6 +144,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user && token.id && token.role) {
         session.user.id = token.id
         session.user.role = token.role
+        // Surface specific required accessToken maps if required natively by next-auth boundaries
+        ;(session as any).accessToken = token.accessToken
       }
       console.log('[AUTH] session callback — user:', { id: session.user?.id, email: session.user?.email, role: (session.user as Record<string, unknown>)?.role })
       return session

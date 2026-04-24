@@ -3,6 +3,7 @@ import { razorpay } from '@/lib/razorpay'
 import { verifyRazorpayPaymentSignature } from '@/lib/hmac'
 import { createHmac } from 'crypto'
 import { SESSION_PRICE_PAISE } from '@/constants/pricing'
+import { createMeetLink } from './meeting.service'
 
 export async function createRazorpayOrder(bookingId: string, studentId: string) {
   const booking = await prisma.booking.findUnique({
@@ -147,6 +148,54 @@ export async function verifyPayment(
       where: { bookingId: payment.bookingId },
     })
   })
+
+  // Idempotency: skip meeting creation if already exists
+  if (payment.booking.meetingUrl) {
+    return { success: true }
+  }
+
+  // Refetch full mentor context required for OAuth operations
+  const mentorData = await prisma.mentor.findUnique({
+    where: { id: payment.booking.mentorId },
+    include: { user: true }
+  })
+
+  const studentData = await prisma.user.findUnique({
+    where: { id: payment.booking.studentId }
+  })
+
+  if (mentorData && studentData && payment.booking.date && payment.booking.startTime) {
+    try {
+      // Re-hydrate the ISO datetimes across IST context properly out of strings
+      const isoDate = payment.booking.date.toISOString().split('T')[0]
+      const meetLink = await Promise.race([
+        createMeetLink({
+          mentor: mentorData.user,
+          startTime: `${isoDate}T${payment.booking.startTime}:00+05:30`,
+          endTime: `${isoDate}T${payment.booking.endTime ?? '00:00'}:00+05:30`,
+          studentEmail: studentData.email
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), 5000)
+        )
+      ]) as string
+
+      await prisma.booking.update({
+        where: { id: payment.bookingId },
+        data: {
+          meetingUrl: meetLink,
+          meetingLink: meetLink,
+          meetingStatus: "created"
+        }
+      })
+    } catch (err) {
+      console.error("Meet link generation failed", err)
+      await prisma.booking.update({
+        where: { id: payment.bookingId },
+        data: { meetingStatus: "pending" }
+      })
+    }
+  }
 
   console.log(JSON.stringify({
     event: "PAYMENT_SUCCESS",

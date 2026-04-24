@@ -20,6 +20,12 @@ model User {
   mentor        Mentor?
   sessions      Session[]
 
+  // Google Calendar Integration
+  googleAccessToken  String?   @map("google_access_token")
+  googleRefreshToken String?   @map("google_refresh_token")
+  googleTokenExpiry  DateTime? @map("google_token_expiry")
+  googleTokenScope   String?   @map("google_token_scope")
+
   @@map("users")
 }
 
@@ -176,6 +182,7 @@ model Booking {
   sessionToken    String        @unique @default(uuid()) @map("session_token")
   calEventId      String?       @map("calendly_event_id")
   meetingLink     String?       @map("meeting_link")
+  meetingStatus   String?       @map("meeting_status")
   
   status          BookingStatus @default(pending)
   source          String        @default("internal")
