@@ -170,17 +170,12 @@ export async function verifyPayment(
     try {
       // Re-hydrate the ISO datetimes across IST context properly out of strings
       const isoDate = payment.booking.date.toISOString().split('T')[0]
-      const meetLink = await Promise.race([
-        createMeetLink({
-          mentor: mentorData.user,
-          startTime: `${isoDate}T${payment.booking.startTime}:00+05:30`,
-          endTime: `${isoDate}T${payment.booking.endTime ?? '00:00'}:00+05:30`,
-          studentEmail: studentData.email
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("timeout")), 5000)
-        )
-      ]) as string
+      const meetLink = await createMeetLink({
+        mentor: mentorData.user,
+        startTime: `${isoDate}T${payment.booking.startTime}:00+05:30`,
+        endTime: `${isoDate}T${payment.booking.endTime ?? '00:00'}:00+05:30`,
+        studentEmail: studentData.email
+      });
 
       await prisma.booking.update({
         where: { id: payment.bookingId },
@@ -189,49 +184,56 @@ export async function verifyPayment(
           meetingLink: meetLink,
           meetingStatus: "created"
         }
-      })
+      });
 
-      // Fire independently, don't await
-      sendBookingEmail({
-        to: studentData.email,
-        studentName: studentData.name || 'Student',
-        mentorName: mentorData.user.name || 'Mentor',
-        date: payment.booking.date!.toDateString(),
-        time: payment.booking.startTime!,
-        meetLink: meetLink
-      }).catch(err => console.error("Async email failed", err))
+      // Await independent processes securely using Promise.allSettled so one failing doesn't block the other
+      const tasks = [];
+      
+      tasks.push(
+        sendBookingEmail({
+          to: studentData.email,
+          studentName: studentData.name || 'Student',
+          mentorName: mentorData.user.name || 'Mentor',
+          date: payment.booking.date!.toDateString(),
+          time: payment.booking.startTime!,
+          meetLink: meetLink
+        })
+      );
 
-      // Lock granular reminder exactly 30 minutes offset 
       if (payment.booking.startDateTime) {
-        scheduleReminder({
-          bookingId: payment.booking.id,
-          startDateTime: payment.booking.startDateTime
-        }).catch(err => console.error("QStash schedule err", err))
+        tasks.push(
+          scheduleReminder({
+            bookingId: payment.booking.id,
+            startDateTime: payment.booking.startDateTime
+          })
+        );
       }
+
+      // 🛡️ CRITICAL: Await all network requests before the function returns!
+      await Promise.allSettled(tasks);
 
     } catch (err) {
       console.error("Meet link generation failed", err)
       await prisma.booking.update({
         where: { id: payment.bookingId },
         data: { meetingStatus: "pending" }
-      })
+      });
 
-      // Send email without link
-      sendBookingEmail({
+      // 🛡️ CRITICAL: Await the fallback email before returning!
+      await sendBookingEmail({
         to: studentData.email,
         studentName: studentData.name || 'Student',
         mentorName: mentorData.user.name || 'Mentor',
         date: payment.booking.date!.toDateString(),
         time: payment.booking.startTime!,
         meetLink: null
-      }).catch(err => console.error("Async email failed", err))
-
-      // Lock granular reminder exactly 30 minutes offset 
+      }).catch(e => console.error("Fallback email failed", e));
+      
       if (payment.booking.startDateTime) {
-        scheduleReminder({
+        await scheduleReminder({
           bookingId: payment.booking.id,
           startDateTime: payment.booking.startDateTime
-        }).catch(err => console.error("QStash schedule err", err))
+        }).catch(e => console.error("Fallback reminder failed", e));
       }
     }
   }
