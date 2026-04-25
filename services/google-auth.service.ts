@@ -12,14 +12,15 @@ export async function getValidGoogleAuth(user: any) {
     refresh_token: user.googleRefreshToken
   })
 
-  // Auto refresh if expired or missing expiry
-  // Add 1 minute buffer for safety against drift
-  const expiryTolerance = new Date(Date.now() + 60000)
-  
-  if (!user.googleTokenExpiry || user.googleTokenExpiry < expiryTolerance) {
-    if (!user.googleRefreshToken) {
-      throw new Error("No refresh_token available for offline sync")
-    }
+  if (!user.googleRefreshToken) {
+    throw new Error("No refresh_token available for offline sync")
+  }
+
+  // 🔥 Smart Hybrid Strategy: Try existing token first, refresh if invalid
+  try {
+    await auth.getAccessToken()
+  } catch (err) {
+    console.log("[GOOGLE_AUTH] Token invalid or expired, refreshing...")
 
     try {
       const { credentials } = await auth.refreshAccessToken()
@@ -34,8 +35,8 @@ export async function getValidGoogleAuth(user: any) {
         })
         auth.setCredentials(credentials)
       }
-    } catch (e: any) {
-      console.error("[GOOGLE_AUTH] Failed to refresh token", e)
+    } catch (refreshErr: any) {
+      console.error("[GOOGLE_AUTH] Failed to refresh token", refreshErr.response?.data || refreshErr.message || refreshErr)
       throw new Error("Failed to refresh Google OAuth token")
     }
   }
