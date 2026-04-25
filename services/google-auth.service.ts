@@ -18,7 +18,10 @@ export async function getValidGoogleAuth(user: any) {
 
   // 🔥 Smart Hybrid Strategy: Try existing token first, refresh if invalid
   try {
-    await auth.getAccessToken()
+    const tokenResponse = await auth.getAccessToken()
+    if (!tokenResponse?.token) {
+      throw new Error("Invalid access token returned")
+    }
   } catch (err) {
     console.log("[GOOGLE_AUTH] Token invalid or expired, refreshing...")
 
@@ -36,6 +39,21 @@ export async function getValidGoogleAuth(user: any) {
         auth.setCredentials(credentials)
       }
     } catch (refreshErr: any) {
+      if (refreshErr.response?.data?.error === "invalid_grant") {
+        console.error("[GOOGLE_AUTH] Refresh token revoked. Clearing credentials.")
+        
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleAccessToken: null,
+            googleRefreshToken: null,
+            googleTokenExpiry: null
+          }
+        })
+        
+        throw new Error("GOOGLE_RECONNECT_REQUIRED")
+      }
+
       console.error("[GOOGLE_AUTH] Failed to refresh token", refreshErr.response?.data || refreshErr.message || refreshErr)
       throw new Error("Failed to refresh Google OAuth token")
     }
