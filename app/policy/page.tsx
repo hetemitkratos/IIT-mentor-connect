@@ -11,7 +11,7 @@ export default function PrivacyPolicy() {
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">PRIVACY POLICY - CandidConversations</h1>
-          <p className="text-[#585f6c] mt-2">Effective Date: [DATE]</p>
+          <p className="text-[#585f6c] mt-2">Effective Date: April 26, 2026</p>
         </div>
 
         <hr className="border-[#e5e7eb]" />
