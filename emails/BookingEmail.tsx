@@ -9,7 +9,7 @@ import {
   Hr,
 } from "@react-email/components"
 
-export default function BookingConfirmationEmail({
+export default function BookingEmail({
   studentName,
   mentorName,
   date,

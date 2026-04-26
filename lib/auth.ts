@@ -1,8 +1,10 @@
 import { NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
+import EmailProvider from 'next-auth/providers/email'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import type { Role } from '@/types'
+import { sendMagicLinkEmail } from '@/services/email.service'
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -21,6 +23,16 @@ export const authOptions: NextAuthOptions = {
           prompt: "consent",
           access_type: "offline"
         }
+      }
+    }),
+    EmailProvider({
+      server: process.env.EMAIL_SERVER,
+      from: process.env.EMAIL_FROM,
+      async sendVerificationRequest({ identifier, url }) {
+        await sendMagicLinkEmail({
+          to: identifier,
+          url: url
+        })
       }
     }),
   ],
