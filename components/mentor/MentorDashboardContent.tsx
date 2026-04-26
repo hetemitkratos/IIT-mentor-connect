@@ -337,22 +337,53 @@ function OngoingCard({ b }: { b: BookingRow }) {
               Session verified — in progress
             </div>
             {b.status === 'paid' && verified && (
-              <div className="flex flex-col items-end gap-2">
-                <button
-                  onClick={handleComplete}
-                  disabled={completing}
-                  className="px-5 py-2 bg-[#191c1d] text-white text-[13px] font-semibold rounded-full hover:bg-black transition-colors disabled:opacity-60 flex items-center gap-2"
-                >
-                  {completing ? (
-                    <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> Completing...</>
-                  ) : (
-                    <>✓ Mark as Completed</>
+                <div className="flex flex-col items-end">
+                  <button
+                    onClick={handleComplete}
+                    disabled={completing}
+                    className="px-5 py-2 bg-[#191c1d] text-white text-[13px] font-semibold rounded-full hover:bg-black transition-colors disabled:opacity-60 flex items-center gap-2"
+                  >
+                    {completing ? (
+                      <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> Completing...</>
+                    ) : (
+                      <>✓ Mark as Completed</>
+                    )}
+                  </button>
+                  
+                  {/* Dynamic Status Messages */}
+                  {(() => {
+                    const now = new Date()
+                    const dateStr = b.date ? new Date(b.date).toISOString().split('T')[0] : ''
+                    const start = new Date(`${dateStr}T${b.startTime}:00+05:30`)
+                    const end = new Date(start.getTime() + 20 * 60 * 1000)
+                    
+                    const isOngoing = now >= start && now <= end
+                    
+                    return (
+                      <>
+                        {isOngoing && (
+                          <p className="text-xs text-orange-500 mt-1 font-medium">
+                            Session in progress ⏳
+                          </p>
+                        )}
+                        {now < end && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            You can mark this session as completed after it ends
+                          </p>
+                        )}
+                        {now >= end && (
+                           <p className="text-xs text-gray-500 mt-1">
+                             You can now mark this session as completed
+                           </p>
+                        )}
+                      </>
+                    )
+                  })()}
+
+                  {completeMsg && (
+                    <p className="text-sm text-orange-500 font-medium mt-1">{completeMsg}</p>
                   )}
-                </button>
-                {completeMsg && (
-                  <p className="text-sm text-orange-500 font-medium">{completeMsg}</p>
-                )}
-              </div>
+                </div>
             )}
           </div>
         ) : (
