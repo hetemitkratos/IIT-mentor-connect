@@ -4,6 +4,7 @@ import "./apply.css";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 /* ─── tiny SVG helpers ─────────────────────────────────── */
 function ArrowIcon() {
@@ -112,6 +113,44 @@ export default function BecomeAMentorPage() {
   
   const [scrollingDown, setScrollingDown] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [checkingAccess, setCheckingAccess] = useState(true);
+
+  useEffect(() => {
+    if (session?.user) {
+      // If user is already an approved mentor, redirect to dashboard
+      if ((session.user as any).role === 'mentor') {
+        router.push('/mentor/dashboard');
+        return;
+      }
+      
+      // Check if they already have an application
+      fetch('/api/mentors/application-status')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.data?.status === 'approved') {
+            router.push('/mentor/dashboard');
+          } else if (data?.data?.status === 'pending') {
+            router.push('/apply/status');
+          } else if (data?.data?.status === 'rejected') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('reapply') === 'true') {
+              setCheckingAccess(false);
+            } else {
+              router.push('/apply/status');
+            }
+          } else {
+            setCheckingAccess(false);
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch application status", err);
+          setCheckingAccess(false);
+        });
+    } else if (session === null) {
+      // Not logged in (or we wait for it to be non-undefined)
+      setCheckingAccess(false);
+    }
+  }, [session, router]);
 
   useEffect(() => {
     if (session?.user?.name && !fullName) {
@@ -188,7 +227,12 @@ export default function BecomeAMentorPage() {
             <h1 className="bam-h1">Apply to Become a Mentor</h1>
           </div>
 
-          {submitted ? (
+          {checkingAccess ? (
+            <div className="bam-card" style={{ padding: "60px 20px", textAlign: "center" }}>
+              <div className="w-8 h-8 border-4 border-[#f5820a]/30 border-t-[#f5820a] rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-[#564335] font-medium">Checking your application status...</p>
+            </div>
+          ) : submitted ? (
             <div className="bam-card bam-success">
               <div className="bam-success__icon">✓</div>
               <h2 className="bam-success__title">Application Submitted!</h2>

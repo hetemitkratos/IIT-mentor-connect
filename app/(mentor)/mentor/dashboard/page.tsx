@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { getMentorDashboard } from '@/services/dashboard.service'
 import MentorDashboardContent from '@/components/mentor/MentorDashboardContent'
+import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -13,6 +14,10 @@ export const metadata: Metadata = {
 export default async function MentorDashboardPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) redirect('/')
+
+  if ((session.user as any).role !== 'mentor' && (session.user as any).role !== 'admin') {
+    redirect('/apply/status')
+  }
 
   const mentor = await prisma.mentor.findUnique({
     where: { userId: session.user.id },
@@ -24,6 +29,7 @@ export default async function MentorDashboardPage() {
   })
 
   if (!mentor) {
+    // Failsafe if role is mentor but no profile exists
     return (
       <main className="min-h-screen bg-[#f9f9f9] flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl border border-[rgba(221,193,175,0.2)] shadow-sm p-10 max-w-md w-full text-center">

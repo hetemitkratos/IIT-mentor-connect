@@ -286,7 +286,7 @@ function RejectedCard({ appId, reason }: { appId: string; reason: string | null 
 
       {/* Apply again CTA */}
       <Link
-        href="/apply"
+        href="/apply?reapply=true"
         className="w-full bg-[#f5820a] hover:bg-[#e07509] text-white font-bold rounded-full py-4 flex items-center justify-center gap-2 transition-colors shadow-[0px_10px_15px_-3px_rgba(245,130,10,0.2),0px_4px_6px_-4px_rgba(245,130,10,0.2)] relative"
         style={{ fontFamily: "'Manrope', sans-serif" }}
       >

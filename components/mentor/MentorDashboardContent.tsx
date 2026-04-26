@@ -150,19 +150,33 @@ function CompletedHeader({ filter, onFilter }: { filter: 'all' | 'recent'; onFil
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { bg: string; text: string; label: string }> = {
-    pending:   { bg: 'bg-[#fff7ed]', text: 'text-[#d96e08]', label: 'Pending Payment' },
-    paid:      { bg: 'bg-[#f0fdf4]', text: 'text-[#16a34a]', label: 'Confirmed' },
-    completed: { bg: 'bg-[#fdf6dc]', text: 'text-[#B8962E]', label: 'Completed' },
-    cancelled: { bg: 'bg-[#f9fafb]', text: 'text-[#9ca3af]', label: 'Cancelled' },
+function StatusBadge({ status, date, startTime }: { status: string; date?: Date | null; startTime?: string | null }) {
+  if (status === 'cancelled') {
+    return <span className="bg-[#f9fafb] text-[#9ca3af] text-[10px] font-semibold tracking-[-0.5px] uppercase px-2 py-0.5 rounded-full">CANCELLED</span>
   }
-  const s = map[status] ?? { bg: 'bg-[#f9fafb]', text: 'text-[#9ca3af]', label: status }
-  return (
-    <span className={`${s.bg} ${s.text} text-[10px] font-semibold tracking-[-0.5px] uppercase px-2 py-0.5 rounded-full`}>
-      {s.label}
-    </span>
-  )
+  if (status === 'completed') {
+    return <span className="bg-gray-100 text-gray-600 text-[10px] font-semibold tracking-[-0.5px] uppercase px-2 py-0.5 rounded-full">COMPLETED</span>
+  }
+  if (status === 'pending') {
+    return <span className="bg-[#fff7ed] text-[#d96e08] text-[10px] font-semibold tracking-[-0.5px] uppercase px-2 py-0.5 rounded-full">PENDING PAYMENT</span>
+  }
+  if (status === 'paid') {
+    if (date && startTime) {
+      const now = new Date()
+      const dateStr = new Date(date).toISOString().split('T')[0]
+      const start = new Date(`${dateStr}T${startTime}:00+05:30`)
+      const end = new Date(start.getTime() + 30 * 60 * 1000)
+
+      if (now < start) {
+        return <span className="bg-blue-100 text-blue-600 text-[10px] font-semibold tracking-[-0.5px] uppercase px-2 py-0.5 rounded-full">UPCOMING</span>
+      }
+      if (now >= start && now <= end) {
+        return <span className="bg-orange-100 text-orange-600 text-[10px] font-semibold tracking-[-0.5px] uppercase px-2 py-0.5 rounded-full">ONGOING</span>
+      }
+    }
+    return <span className="bg-[#f0fdf4] text-[#16a34a] text-[10px] font-semibold tracking-[-0.5px] uppercase px-2 py-0.5 rounded-full">CONFIRMED</span>
+  }
+  return <span className="bg-[#f9fafb] text-[#9ca3af] text-[10px] font-semibold tracking-[-0.5px] uppercase px-2 py-0.5 rounded-full">{status}</span>
 }
 
 function EmptyState({ message }: { message: string }) {
@@ -191,7 +205,7 @@ function UpcomingCard({ b }: { b: BookingRow }) {
               </svg>
               {fmt(b.date, b.startTime)}
             </span>
-            <StatusBadge status={b.status} />
+            <StatusBadge status={b.status} date={b.date} startTime={b.startTime} />
           </div>
         </div>
       </div>
@@ -225,6 +239,7 @@ function OngoingCard({ b }: { b: BookingRow }) {
   const [verifying, setVerifying] = useState(false)
   const [verified, setVerified] = useState(b.otpVerified)
   const [completing, setCompleting] = useState(false)
+  const [completeMsg, setCompleteMsg] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
   const handleVerify = async () => {
@@ -248,6 +263,22 @@ function OngoingCard({ b }: { b: BookingRow }) {
   }
 
   const handleComplete = async () => {
+    setCompleteMsg(null)
+    const now = new Date()
+    const dateStr = b.date ? new Date(b.date).toISOString().split('T')[0] : ''
+    const start = new Date(`${dateStr}T${b.startTime}:00+05:30`)
+    const end = new Date(start.getTime() + 20 * 60 * 1000)
+
+    if (now < start) {
+      setCompleteMsg("Session hasn’t started yet")
+      return
+    }
+
+    if (now >= start && now <= end) {
+      setCompleteMsg("Session is currently ongoing ⏳")
+      return
+    }
+
     setCompleting(true)
     try {
       const res = await fetch('/api/bookings/complete', {
@@ -276,7 +307,7 @@ function OngoingCard({ b }: { b: BookingRow }) {
                 </svg>
                 {fmt(b.date, b.startTime)}
               </span>
-              <StatusBadge status={b.status} />
+              <StatusBadge status={b.status} date={b.date} startTime={b.startTime} />
             </div>
           </div>
         </div>
@@ -306,17 +337,22 @@ function OngoingCard({ b }: { b: BookingRow }) {
               Session verified — in progress
             </div>
             {b.status === 'paid' && verified && (
-              <button
-                onClick={handleComplete}
-                disabled={completing}
-                className="px-5 py-2 bg-[#191c1d] text-white text-[13px] font-semibold rounded-full hover:bg-black transition-colors disabled:opacity-60 flex items-center gap-2"
-              >
-                {completing ? (
-                  <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> Completing...</>
-                ) : (
-                  <>✓ Mark as Completed</>
+              <div className="flex flex-col items-end gap-2">
+                <button
+                  onClick={handleComplete}
+                  disabled={completing}
+                  className="px-5 py-2 bg-[#191c1d] text-white text-[13px] font-semibold rounded-full hover:bg-black transition-colors disabled:opacity-60 flex items-center gap-2"
+                >
+                  {completing ? (
+                    <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> Completing...</>
+                  ) : (
+                    <>✓ Mark as Completed</>
+                  )}
+                </button>
+                {completeMsg && (
+                  <p className="text-sm text-orange-500 font-medium">{completeMsg}</p>
                 )}
-              </button>
+              </div>
             )}
           </div>
         ) : (
@@ -332,7 +368,7 @@ function OngoingCard({ b }: { b: BookingRow }) {
                 placeholder="4-digit OTP"
                 value={otp}
                 onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                className="w-32 text-center px-3 py-2 text-sm border border-[rgba(245,130,10,0.3)] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#f5820a]/30 font-mono tracking-widest"
+                className="w-32 text-center px-3 py-2 border border-[rgba(245,130,10,0.3)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f5820a]/30 text-black placeholder-gray-400 bg-white font-semibold tracking-widest text-lg"
               />
               <button
                 onClick={handleVerify}
@@ -364,7 +400,7 @@ function CompletedRow({ b }: { b: BookingRow }) {
           <p className="text-[11px] text-[#9ca3af] mt-0.5">{fmt(b.date ?? b.createdAt, b.startTime)}</p>
         </div>
       </div>
-      <StatusBadge status={b.status} />
+      <StatusBadge status={b.status} date={b.date ?? b.createdAt} startTime={b.startTime} />
     </div>
   )
 }
