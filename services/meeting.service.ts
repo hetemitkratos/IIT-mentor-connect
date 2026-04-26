@@ -14,10 +14,14 @@ export async function createMeetLink({
 }) {
   const auth = await getValidGoogleAuth(mentor)
 
+  // 🔥 CRITICAL: Re-initialize the calendar client correctly using the valid auth
+  const calendar = google.calendar({ version: "v3", auth })
+
   console.log(`[MEET] Generating link for ${mentor.email} at ${startTime}...`)
 
   const insertEvent = async (retrying = false): Promise<any> => {
     try {
+      console.log(`[MEET] Calling Google Calendar events.insert API...`)
       const event = await calendar.events.insert({
         calendarId: "primary",
         conferenceDataVersion: 1,
@@ -40,6 +44,7 @@ export async function createMeetLink({
           }
         }
       })
+      console.log(`[MEET] Google Calendar API responded successfully.`)
       return event
     } catch (err: any) {
       if (err.response?.status === 401 && !retrying) {
@@ -48,6 +53,12 @@ export async function createMeetLink({
         auth.setCredentials(credentials)
         return insertEvent(true) // Retry once
       }
+
+      console.error(`[MEET] Google Calendar API Call Error:`, {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message
+      })
       throw err
     }
   }
@@ -61,12 +72,11 @@ export async function createMeetLink({
       event.data.conferenceData?.entryPoints?.[0]?.uri ||
       event.data.htmlLink
 
-    console.log(`[MEET] Successfully generated link: ${link}`)
+    console.log(`[MEET] Successfully extracted Meet link: ${link}`)
     return link
 
   } catch (err: any) {
-    console.error("[MEET] Failed to generate Google Meet link. Full error details:")
-    console.error(err.response?.data || err.message || err)
+    console.error("[MEET] Failed to generate Google Meet link completely. Fallback will trigger.")
     throw new Error("Calendar event creation failed")
   }
 }
