@@ -97,6 +97,7 @@ const JEE_YEARS = Array.from({ length: 12 }, (_, i) => String(new Date().getFull
 /* ════ COMPONENT ════════════════════════════════════════════ */
 export default function BecomeAMentorPage() {
   const { data: session } = useSession();
+  const router = useRouter();
 
   const [fullName, setFullName] = useState("");
   const [iit, setIit]           = useState("IIT Kharagpur");
